@@ -108,6 +108,113 @@ router.post("/classify", async (req: Request, res: Response) => {
   }
 });
 
+// POST /api/v1/ai/smart-create - 智能创建事件（语音/文本 + 自动分类 + 保存）
+router.post("/smart-create", upload.single("audio"), async (req: Request, res: Response) => {
+  try {
+    let text = req.body.text;
+
+    // 如果有音频文件，先进行语音识别
+    if (req.file) {
+      const audioPath = req.file.path;
+      const audioBuffer = fs.readFileSync(audioPath);
+      const audioBase64 = audioBuffer.toString("base64");
+
+      const customHeaders = HeaderUtils.extractForwardHeaders(req.headers as Record<string, string>);
+      const config = new Config();
+      const asrClient = new ASRClient(config, customHeaders);
+
+      const asrResult = await asrClient.recognize({
+        uid: "memokeep-user",
+        base64Data: audioBase64,
+      });
+
+      text = asrResult.text;
+      fs.unlinkSync(audioPath);
+    }
+
+    if (!text) {
+      return res.status(400).json({ error: "请提供文本内容或音频文件" });
+    }
+
+    // 调用 AI 分类
+    const classifyHeaders = HeaderUtils.extractForwardHeaders(req.headers as Record<string, string>);
+    const classifyConfig = new Config();
+    const llmClient = new LLMClient(classifyConfig, classifyHeaders);
+
+    const systemPrompt = `你是一个智能事件分类助手。请分析用户输入的内容，提取事件信息并返回 JSON 格式。
+
+返回格式：
+{
+  "title": "事件标题（简短）",
+  "description": "事件描述（可选）",
+  "category": "work/life/family",
+  "priority": "high/medium/low",
+  "person": "相关人员（可选）",
+  "remind_time": "提醒时间 ISO 格式（可选）"
+}
+
+分类规则：
+- work: 工作相关（会议、项目、报告、客户等）
+- life: 生活相关（购物、健身、娱乐、个人事务等）
+- family: 家庭相关（家人、孩子、家庭活动等）
+
+优先级规则：
+- high: 紧急重要（截止日期近、重要会议等）
+- medium: 一般重要
+- low: 不紧急
+
+请只返回 JSON，不要其他内容。`;
+
+    const userPrompt = `请分析以下内容：${text}`;
+
+    const response = await llmClient.invoke(
+      [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      { model: "doubao-seed-2-0-lite-260215" }
+    );
+
+    let aiResult;
+    try {
+      const jsonMatch = response.content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        aiResult = JSON.parse(jsonMatch[0]);
+      } else {
+        aiResult = JSON.parse(response.content);
+      }
+    } catch {
+      return res.status(500).json({ error: "AI 响应解析失败" });
+    }
+
+    // 保存事件到数据库
+    const supabase = getSupabaseClient();
+    const { data: event, error } = await supabase
+      .from("events")
+      .insert({
+        title: aiResult.title || text.slice(0, 50),
+        description: aiResult.description || null,
+        category: aiResult.category || "life",
+        priority: aiResult.priority || "medium",
+        person: aiResult.person || null,
+        remind_time: aiResult.remind_time || null,
+        is_completed: false,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Save event error:", error);
+      return res.status(500).json({ error: "保存事件失败" });
+    }
+
+    res.json({ event, text });
+  } catch (error) {
+    console.error("Smart create error:", error);
+    res.status(500).json({ error: "智能创建失败" });
+  }
+});
+
 // POST /api/v1/ai/generate-report - 生成报告
 router.post("/generate-report", async (req: Request, res: Response) => {
   try {

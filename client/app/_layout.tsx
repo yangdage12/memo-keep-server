@@ -1,8 +1,8 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { LogBox } from 'react-native';
-import Toast from 'react-native-toast-message';
 import { Provider } from '@/components/Provider';
+import { LinkPreviewContextProvider } from 'expo-router/build/link/preview/LinkPreviewContext';
 
 import '../global.css';
 
@@ -12,19 +12,20 @@ LogBox.ignoreLogs([
 
 export default function RootLayout() {
   return (
-    <Provider>
-      <Stack
-        screenOptions={{
-          animation: 'slide_from_right',
-          gestureEnabled: true,
-          gestureDirection: 'horizontal',
-          headerShown: false
-        }}
-      >
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="detail" />
-      </Stack>
-      <Toast />
-    </Provider>
+    <LinkPreviewContextProvider>
+      <Provider>
+        <Stack
+          screenOptions={{
+            animation: 'slide_from_right',
+            gestureEnabled: true,
+            gestureDirection: 'horizontal',
+            headerShown: false
+          }}
+        >
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="detail" />
+        </Stack>
+      </Provider>
+    </LinkPreviewContextProvider>
   );
 }

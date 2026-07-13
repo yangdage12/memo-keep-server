@@ -130,3 +130,136 @@ export async function deleteEvent(id: number): Promise<void> {
   const json = await response.json();
   if (!json.success) throw new Error(json.error);
 }
+
+// ============ AI API ============
+
+export interface AIEventResult {
+  title: string;
+  description: string;
+  category: 'work' | 'life' | 'family';
+  priority: 'high' | 'medium' | 'low';
+  person: string;
+  remind_time: string | null;
+}
+
+export interface ReportItem {
+  id: number;
+  type: 'monthly' | 'quarterly' | 'yearly';
+  period: string;
+  title: string;
+  content: string;
+  summary: string | null;
+  event_count: number;
+  created_at: string;
+}
+
+export async function transcribeAudio(audioUri: string): Promise<{ text: string; duration?: number }> {
+  /**
+   * 服务端文件：server/src/routes/ai.ts
+   * 接口：POST /api/v1/ai/transcribe
+   * Body: FormData with audio file
+   */
+  const formData = new FormData();
+  const fileResponse = await fetch(audioUri);
+  const fileBlob = await fileResponse.blob();
+  formData.append('audio', fileBlob as any, 'recording.m4a');
+
+  const response = await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/ai/transcribe`, {
+    method: 'POST',
+    body: formData,
+  });
+  const json = await response.json();
+  if (!response.ok) throw new Error(json.error);
+  return json;
+}
+
+export async function classifyEvent(text: string): Promise<AIEventResult> {
+  /**
+   * 服务端文件：server/src/routes/ai.ts
+   * 接口：POST /api/v1/ai/classify
+   * Body 参数：text: string
+   */
+  const response = await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/ai/classify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  });
+  const json = await response.json();
+  if (!response.ok) throw new Error(json.error);
+  return json;
+}
+
+export async function smartCreateEvent(text?: string, audioUri?: string): Promise<{ event: EventItem; transcribedText: string }> {
+  /**
+   * 服务端文件：server/src/routes/ai.ts
+   * 接口：POST /api/v1/ai/smart-create
+   * Body: FormData with text and/or audio file
+   */
+  const formData = new FormData();
+  if (text) formData.append('text', text);
+  if (audioUri) {
+    const fileResponse = await fetch(audioUri);
+    const fileBlob = await fileResponse.blob();
+    formData.append('audio', fileBlob as any, 'recording.m4a');
+  }
+
+  const response = await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/ai/smart-create`, {
+    method: 'POST',
+    body: formData,
+  });
+  const json = await response.json();
+  if (!response.ok) throw new Error(json.error);
+  return json;
+}
+
+export async function generateReport(type: string, period: string): Promise<{ report: ReportItem; stats: any }> {
+  /**
+   * 服务端文件：server/src/routes/ai.ts
+   * 接口：POST /api/v1/ai/generate-report
+   * Body 参数：type: string, period: string
+   */
+  const response = await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/ai/generate-report`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type, period }),
+  });
+  const json = await response.json();
+  if (!response.ok) throw new Error(json.error);
+  return json;
+}
+
+export async function fetchReports(): Promise<ReportItem[]> {
+  /**
+   * 服务端文件：server/src/routes/ai.ts
+   * 接口：GET /api/v1/ai/reports
+   */
+  const response = await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/ai/reports`);
+  const json = await response.json();
+  if (!response.ok) throw new Error(json.error);
+  return json;
+}
+
+export async function fetchReportById(id: number): Promise<ReportItem> {
+  /**
+   * 服务端文件：server/src/routes/ai.ts
+   * 接口：GET /api/v1/ai/reports/:id
+   * Path 参数：id: number
+   */
+  const response = await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/ai/reports/${id}`);
+  const json = await response.json();
+  if (!response.ok) throw new Error(json.error);
+  return json;
+}
+
+export async function deleteReport(id: number): Promise<void> {
+  /**
+   * 服务端文件：server/src/routes/ai.ts
+   * 接口：DELETE /api/v1/ai/reports/:id
+   * Path 参数：id: number
+   */
+  const response = await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/ai/reports/${id}`, {
+    method: 'DELETE',
+  });
+  const json = await response.json();
+  if (!response.ok) throw new Error(json.error);
+}

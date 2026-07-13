@@ -34,6 +34,24 @@ export const events = pgTable(
   ]
 );
 
+export const reports = pgTable(
+  "reports",
+  {
+    id: serial().primaryKey(),
+    type: varchar("type", { length: 20 }).notNull(), // 'monthly', 'quarterly', 'yearly'
+    period: varchar("period", { length: 20 }).notNull(), // e.g., '2025-01', '2025-Q1', '2025'
+    title: varchar("title", { length: 255 }).notNull(),
+    content: text("content").notNull(),
+    summary: text("summary"),
+    event_count: integer("event_count").default(0),
+    created_at: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("reports_type_idx").on(table.type),
+    index("reports_period_idx").on(table.period),
+  ]
+);
+
 const { createInsertSchema: createCoercedInsertSchema } = createSchemaFactory({ coerce: { date: true } });
 export const insertEventSchema = createCoercedInsertSchema(events).pick({
   title: true,
@@ -45,3 +63,14 @@ export const insertEventSchema = createCoercedInsertSchema(events).pick({
 });
 export type Event = typeof events.$inferSelect;
 export type InsertEvent = z.infer<typeof insertEventSchema>;
+
+export const insertReportSchema = createCoercedInsertSchema(reports).pick({
+  type: true,
+  period: true,
+  title: true,
+  content: true,
+  summary: true,
+  event_count: true,
+});
+export type Report = typeof reports.$inferSelect;
+export type InsertReport = z.infer<typeof insertReportSchema>;

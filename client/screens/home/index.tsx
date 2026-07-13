@@ -27,6 +27,7 @@ import {
 } from '@/utils/api';
 import { initNotifications, scheduleEventReminder, cancelEventReminder } from '@/utils/notifications';
 import { useSafeRouter } from '@/hooks/useSafeRouter';
+import VoiceInputModal from '@/components/VoiceInputModal';
 
 const CATEGORIES = [
   { key: 'all', label: '全部', color: '#6C63FF' },
@@ -153,6 +154,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('all');
   const [modalVisible, setModalVisible] = useState(false);
+  const [voiceModalVisible, setVoiceModalVisible] = useState(false);
   const [editingEvent, setEditingEvent] = useState<EventItem | null>(null);
 
   // Form state
@@ -387,6 +389,27 @@ export default function HomeScreen() {
           <FontAwesome6 name="plus" size={24} color="#FFFFFF" />
         </View>
       </TouchableOpacity>
+
+      {/* Voice Input Button */}
+      <TouchableOpacity
+        style={styles.voiceFab}
+        onPress={() => setVoiceModalVisible(true)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.voiceFabInner}>
+          <FontAwesome6 name="microphone" size={22} color="#FFFFFF" />
+        </View>
+      </TouchableOpacity>
+
+      {/* Voice Input Modal */}
+      <VoiceInputModal
+        visible={voiceModalVisible}
+        onClose={() => setVoiceModalVisible(false)}
+        onEventCreated={() => {
+          setVoiceModalVisible(false);
+          loadEvents();
+        }}
+      />
 
       {/* Add/Edit Modal */}
       <Modal visible={modalVisible} transparent animationType="slide">
@@ -698,6 +721,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 8,
     elevation: 8,
+  },
+  voiceFab: {
+    position: 'absolute',
+    right: 24,
+    bottom: 148,
+  },
+  voiceFabInner: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#00B894',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#00B894',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
   },
   modalOverlay: {
     flex: 1,

@@ -15,6 +15,7 @@ import {
   Alert,
   SectionList,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Screen } from '@/components/Screen';
 import { useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -349,6 +350,10 @@ export default function HomeScreen() {
   const [formPerson, setFormPerson] = useState('');
   const [formDate, setFormDate] = useState('');
   const [formTime, setFormTime] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedTime, setSelectedTime] = useState<Date | null>(null);
 
   // Voice input
   const [voiceModalVisible, setVoiceModalVisible] = useState(false);
@@ -383,6 +388,10 @@ export default function HomeScreen() {
     setFormPerson('');
     setFormDate('');
     setFormTime('');
+    setSelectedDate(null);
+    setSelectedTime(null);
+    setShowDatePicker(false);
+    setShowTimePicker(false);
   };
 
   const openAddModal = () => {
@@ -400,6 +409,8 @@ export default function HomeScreen() {
     setFormPerson(item.person || '');
     if (item.remind_time) {
       const d = new Date(item.remind_time);
+      setSelectedDate(d);
+      setSelectedTime(d);
       setFormDate(d.toISOString().split('T')[0]);
       setFormTime(
         `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
@@ -407,6 +418,8 @@ export default function HomeScreen() {
     } else {
       setFormDate('');
       setFormTime('');
+      setSelectedDate(null);
+      setSelectedTime(null);
     }
     setModalVisible(true);
   };
@@ -712,21 +725,55 @@ export default function HomeScreen() {
 
                   <Text style={styles.label}>提醒时间</Text>
                   <View style={styles.datetimeRow}>
-                    <TextInput
+                    <TouchableOpacity
                       style={[styles.input, styles.dateInput]}
-                      value={formDate}
-                      onChangeText={setFormDate}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor="#B2BEC3"
-                    />
-                    <TextInput
+                      onPress={() => setShowDatePicker(true)}
+                    >
+                      <Text style={formDate ? styles.inputText : styles.placeholderText}>
+                        {formDate || '选择日期'}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
                       style={[styles.input, styles.timeInput]}
-                      value={formTime}
-                      onChangeText={setFormTime}
-                      placeholder="HH:MM"
-                      placeholderTextColor="#B2BEC3"
-                    />
+                      onPress={() => setShowTimePicker(true)}
+                    >
+                      <Text style={formTime ? styles.inputText : styles.placeholderText}>
+                        {formTime || '选择时间'}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
+
+                  {showDatePicker && (
+                    <DateTimePicker
+                      value={selectedDate || new Date()}
+                      mode="date"
+                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      onChange={(event, date) => {
+                        setShowDatePicker(false);
+                        if (date) {
+                          setSelectedDate(date);
+                          setFormDate(date.toISOString().split('T')[0]);
+                        }
+                      }}
+                    />
+                  )}
+
+                  {showTimePicker && (
+                    <DateTimePicker
+                      value={selectedTime || new Date()}
+                      mode="time"
+                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      onChange={(event, date) => {
+                        setShowTimePicker(false);
+                        if (date) {
+                          setSelectedTime(date);
+                          setFormTime(
+                            `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
+                          );
+                        }
+                      }}
+                    />
+                  )}
                 </ScrollView>
 
                 <View style={styles.modalFooter}>
@@ -1052,6 +1099,14 @@ const styles = StyleSheet.create({
     padding: 14,
     fontSize: 15,
     color: '#2D3436',
+  },
+  inputText: {
+    fontSize: 15,
+    color: '#2D3436',
+  },
+  placeholderText: {
+    fontSize: 15,
+    color: '#B2BEC3',
   },
   textArea: {
     minHeight: 80,

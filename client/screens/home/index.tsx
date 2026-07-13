@@ -13,6 +13,7 @@ import {
   Keyboard,
   Platform,
   Alert,
+  SectionList,
 } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { useFocusEffect } from 'expo-router';
@@ -30,10 +31,9 @@ import { useSafeRouter } from '@/hooks/useSafeRouter';
 import VoiceInputModal from '@/components/VoiceInputModal';
 
 const CATEGORIES = [
-  { key: 'all', label: '全部', color: '#6C63FF' },
-  { key: 'work', label: '工作', color: '#6C63FF' },
-  { key: 'life', label: '生活', color: '#00B894' },
-  { key: 'family', label: '家庭', color: '#FDCB6E' },
+  { key: 'work', label: '工作', color: '#6C63FF', icon: 'briefcase' },
+  { key: 'life', label: '生活', color: '#00B894', icon: 'heart' },
+  { key: 'family', label: '家庭', color: '#FDCB6E', icon: 'house-user' },
 ];
 
 const PRIORITIES = [
@@ -62,6 +62,15 @@ function formatDate(dateStr: string | null): string {
   const hours = d.getHours().toString().padStart(2, '0');
   const minutes = d.getMinutes().toString().padStart(2, '0');
   return `${month}月${day}日 ${hours}:${minutes}`;
+}
+
+function formatDateOnly(dateStr: string): string {
+  const d = new Date(dateStr);
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+  const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  const weekday = weekdays[d.getDay()];
+  return `${month}月${day}日 ${weekday}`;
 }
 
 function isOverdue(dateStr: string | null, isCompleted: boolean): boolean {
@@ -98,96 +107,273 @@ function EventCard({ item, onToggleComplete, onEdit, onPress }: EventCardProps) 
               ]}
             >
               {item.is_completed && (
-                <FontAwesome6 name="check" size={14} color="#00B894" />
+                <FontAwesome6 name="check" size={12} color="#00B894" />
               )}
             </TouchableOpacity>
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text
-                style={[
-                  styles.cardTitle,
-                  item.is_completed && styles.cardTitleCompleted,
-                ]}
-                numberOfLines={1}
-              >
-                {item.title}
-              </Text>
-              {item.person ? (
-                <Text style={styles.cardPerson} numberOfLines={1}>
-                  <FontAwesome6 name="user" size={10} color="#636E72" /> {item.person}
-                </Text>
-              ) : null}
-            </View>
+            <Text
+              style={[
+                styles.cardTitle,
+                item.is_completed && styles.cardTitleCompleted,
+              ]}
+              numberOfLines={1}
+            >
+              {item.title}
+            </Text>
           </View>
           <TouchableOpacity onPress={() => onEdit(item)} style={styles.editBtn}>
-            <FontAwesome6 name="pen" size={14} color="#636E72" />
+            <FontAwesome6 name="pen" size={14} color="#B2BEC3" />
           </TouchableOpacity>
         </View>
-        <View style={styles.cardBottom}>
+
+        {item.description ? (
+          <Text style={styles.cardDesc} numberOfLines={2}>
+            {item.description}
+          </Text>
+        ) : null}
+
+        <View style={styles.cardMeta}>
           <View style={[styles.tag, { backgroundColor: `${catInfo.color}15` }]}>
-            <Text style={[styles.tagText, { color: catInfo.color }]}>{catInfo.label}</Text>
+            <Text style={[styles.tagText, { color: catInfo.color }]}>
+              {catInfo.label}
+            </Text>
           </View>
           <View style={[styles.tag, { backgroundColor: `${priInfo.color}15` }]}>
-            <Text style={[styles.tagText, { color: priInfo.color }]}>{priInfo.label}优先</Text>
+            <Text style={[styles.tagText, { color: priInfo.color }]}>
+              {priInfo.label}
+            </Text>
           </View>
-          <View style={styles.cardTime}>
+          {item.person ? (
+            <View style={styles.personTag}>
+              <FontAwesome6 name="user" size={10} color="#636E72" />
+              <Text style={styles.personText}>{item.person}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {item.remind_time ? (
+          <View style={[styles.remindRow, overdue && styles.remindOverdue]}>
             <FontAwesome6
               name="clock"
-              size={10}
-              color={overdue ? '#FF6B6B' : '#636E72'}
+              size={12}
+              color={overdue ? '#FF6B6B' : '#B2BEC3'}
             />
             <Text
-              style={[styles.timeText, overdue && styles.timeTextOverdue]}
+              style={[
+                styles.remindText,
+                overdue && styles.remindTextOverdue,
+              ]}
             >
-              {overdue ? '已过期 · ' : ''}{formatDate(item.remind_time)}
+              {formatDate(item.remind_time)}
+              {overdue ? ' (已逾期)' : ''}
             </Text>
+          </View>
+        ) : null}
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+interface DateSection {
+  title: string;
+  date: string;
+  data: EventItem[];
+}
+
+function CategorySection({
+  category,
+  events,
+  onToggleComplete,
+  onEdit,
+  onPress,
+}: {
+  category: typeof CATEGORIES[0];
+  events: EventItem[];
+  onToggleComplete: (item: EventItem) => void;
+  onEdit: (item: EventItem) => void;
+  onPress: (item: EventItem) => void;
+}) {
+  const [expandedDates, setExpandedDates] = useState<Set<string>>(() => {
+    // 按日期分组
+    const dateGroups = events.reduce<Record<string, EventItem[]>>((acc, event) => {
+      const dateKey = event.remind_time
+        ? new Date(event.remind_time).toISOString().split('T')[0]
+        : 'no-date';
+      if (!acc[dateKey]) acc[dateKey] = [];
+      acc[dateKey].push(event);
+      return acc;
+    }, {});
+
+    const sections: DateSection[] = Object.entries(dateGroups)
+      .map(([date, items]) => ({
+        title: date === 'no-date' ? '未设置日期' : formatDateOnly(date),
+        date,
+        data: items.sort(
+          (a, b) =>
+            new Date(a.remind_time || 0).getTime() -
+            new Date(b.remind_time || 0).getTime()
+        ),
+      }))
+      .sort((a, b) => {
+        if (a.date === 'no-date') return 1;
+        if (b.date === 'no-date') return -1;
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+      });
+
+    return new Set(sections.map(s => s.date));
+  });
+
+  // 按日期分组
+  const dateGroups = events.reduce<Record<string, EventItem[]>>((acc, event) => {
+    const dateKey = event.remind_time
+      ? new Date(event.remind_time).toISOString().split('T')[0]
+      : 'no-date';
+    if (!acc[dateKey]) acc[dateKey] = [];
+    acc[dateKey].push(event);
+    return acc;
+  }, {});
+
+  const sections: DateSection[] = Object.entries(dateGroups)
+    .map(([date, items]) => ({
+      title: date === 'no-date' ? '未设置日期' : formatDateOnly(date),
+      date,
+      data: items.sort(
+        (a, b) =>
+          new Date(a.remind_time || 0).getTime() -
+          new Date(b.remind_time || 0).getTime()
+      ),
+    }))
+    .sort((a, b) => {
+      if (a.date === 'no-date') return 1;
+      if (b.date === 'no-date') return -1;
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
+    });
+
+  const toggleDate = (date: string) => {
+    setExpandedDates(prev => {
+      const next = new Set(prev);
+      if (next.has(date)) {
+        next.delete(date);
+      } else {
+        next.add(date);
+      }
+      return next;
+    });
+  };
+
+  if (events.length === 0) {
+    return (
+      <View style={styles.categorySection}>
+        <View style={[styles.categoryHeader, { backgroundColor: `${category.color}10` }]}>
+          <View style={styles.categoryHeaderLeft}>
+            <FontAwesome6 name={category.icon as any} size={18} color={category.color} />
+            <Text style={[styles.categoryTitle, { color: category.color }]}>
+              {category.label}
+            </Text>
+            <View style={styles.categoryCount}>
+              <Text style={styles.categoryCountText}>{events.length}</Text>
+            </View>
+          </View>
+        </View>
+        <View style={styles.emptyCategory}>
+          <Text style={styles.emptyCategoryText}>暂无{category.label}事件</Text>
+        </View>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.categorySection}>
+      <View style={[styles.categoryHeader, { backgroundColor: `${category.color}10` }]}>
+        <View style={styles.categoryHeaderLeft}>
+          <FontAwesome6 name={category.icon as any} size={18} color={category.color} />
+          <Text style={[styles.categoryTitle, { color: category.color }]}>
+            {category.label}
+          </Text>
+          <View style={styles.categoryCount}>
+            <Text style={styles.categoryCountText}>{events.length}</Text>
           </View>
         </View>
       </View>
-    </TouchableOpacity>
+
+      {sections.map(section => (
+        <View key={section.date} style={styles.dateSection}>
+          <TouchableOpacity
+            style={styles.dateHeader}
+            onPress={() => toggleDate(section.date)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.dateTitle}>{section.title}</Text>
+            <View style={styles.dateCount}>
+              <Text style={styles.dateCountText}>{section.data.length}</Text>
+            </View>
+            <FontAwesome6
+              name={expandedDates.has(section.date) ? 'chevron-up' : 'chevron-down'}
+              size={14}
+              color="#B2BEC3"
+            />
+          </TouchableOpacity>
+
+          {expandedDates.has(section.date) && (
+            <View style={styles.dateContent}>
+              {section.data.map(item => (
+                <EventCard
+                  key={item.id}
+                  item={item}
+                  onToggleComplete={onToggleComplete}
+                  onEdit={onEdit}
+                  onPress={onPress}
+                />
+              ))}
+            </View>
+          )}
+        </View>
+      ))}
+    </View>
   );
 }
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useSafeRouter();
+
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState('all');
-  const [modalVisible, setModalVisible] = useState(false);
-  const [voiceModalVisible, setVoiceModalVisible] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<EventItem | null>(null);
 
-  // Form state
+  // Modal states
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<EventItem | null>(null);
   const [formTitle, setFormTitle] = useState('');
   const [formDesc, setFormDesc] = useState('');
-  const [formCategory, setFormCategory] = useState('work');
-  const [formPriority, setFormPriority] = useState('medium');
+  const [formCategory, setFormCategory] = useState<'work' | 'life' | 'family'>('work');
+  const [formPriority, setFormPriority] = useState<'high' | 'medium' | 'low'>('medium');
   const [formPerson, setFormPerson] = useState('');
   const [formDate, setFormDate] = useState('');
   const [formTime, setFormTime] = useState('');
 
-  useEffect(() => {
-    initNotifications();
-  }, []);
+  // Voice input
+  const [voiceModalVisible, setVoiceModalVisible] = useState(false);
 
   const loadEvents = useCallback(async () => {
     try {
       setLoading(true);
-      const params = activeCategory !== 'all' ? { category: activeCategory } : undefined;
-      const data = await fetchEvents(params);
+      const data = await fetchEvents();
       setEvents(data);
     } catch (err) {
       console.error('Failed to load events:', err);
     } finally {
       setLoading(false);
     }
-  }, [activeCategory]);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       loadEvents();
     }, [loadEvents])
   );
+
+  useEffect(() => {
+    initNotifications();
+  }, []);
 
   const resetForm = () => {
     setFormTitle('');
@@ -311,7 +497,14 @@ export default function HomeScreen() {
     router.push('/detail', { eventId: item.id });
   };
 
-  const pendingEvents = events.filter(e => !e.is_completed);
+  const handleEventCreated = (event: EventItem) => {
+    setVoiceModalVisible(false);
+    loadEvents();
+  };
+
+  const workEvents = events.filter(e => e.category === 'work' && !e.is_completed);
+  const lifeEvents = events.filter(e => e.category === 'life' && !e.is_completed);
+  const familyEvents = events.filter(e => e.category === 'family' && !e.is_completed);
   const completedEvents = events.filter(e => e.is_completed);
 
   return (
@@ -321,67 +514,60 @@ export default function HomeScreen() {
         <Text style={styles.headerSubtitle}>记录每一个重要时刻</Text>
       </View>
 
-      <View style={styles.filterRow}>
-        {CATEGORIES.map(cat => (
-          <TouchableOpacity
-            key={cat.key}
-            style={[
-              styles.filterChip,
-              activeCategory === cat.key && { backgroundColor: `${cat.color}20` },
-            ]}
-            onPress={() => setActiveCategory(cat.key)}
-          >
-            <Text
-              style={[
-                styles.filterChipText,
-                activeCategory === cat.key && { color: cat.color, fontWeight: '700' },
-              ]}
-            >
-              {cat.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <FlatList
-        data={pendingEvents}
-        keyExtractor={item => String(item.id)}
-        renderItem={({ item }) => (
-          <EventCard
-            item={item}
-            onToggleComplete={handleToggleComplete}
-            onEdit={openEditModal}
-            onPress={handlePress}
-          />
-        )}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 120 }}
-        ListEmptyComponent={
-          !loading ? (
-            <View style={styles.emptyContainer}>
-              <FontAwesome6 name="clipboard-list" size={48} color="#B2BEC3" />
-              <Text style={styles.emptyText}>暂无事件</Text>
-              <Text style={styles.emptySubText}>点击下方按钮添加新事件</Text>
-            </View>
-          ) : null
-        }
-        ListFooterComponent={
-          completedEvents.length > 0 ? (
-            <View style={{ marginTop: 24 }}>
-              <Text style={styles.sectionTitle}>已完成</Text>
-              {completedEvents.map(item => (
-                <EventCard
-                  key={item.id}
-                  item={item}
-                  onToggleComplete={handleToggleComplete}
-                  onEdit={openEditModal}
-                  onPress={handlePress}
-                />
-              ))}
-            </View>
-          ) : null
-        }
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={{ paddingBottom: 140 }}
         showsVerticalScrollIndicator={false}
-      />
+      >
+        {/* 工作 */}
+        <CategorySection
+          category={CATEGORIES[0]}
+          events={workEvents}
+          onToggleComplete={handleToggleComplete}
+          onEdit={openEditModal}
+          onPress={handlePress}
+        />
+
+        {/* 生活 */}
+        <CategorySection
+          category={CATEGORIES[1]}
+          events={lifeEvents}
+          onToggleComplete={handleToggleComplete}
+          onEdit={openEditModal}
+          onPress={handlePress}
+        />
+
+        {/* 家庭 */}
+        <CategorySection
+          category={CATEGORIES[2]}
+          events={familyEvents}
+          onToggleComplete={handleToggleComplete}
+          onEdit={openEditModal}
+          onPress={handlePress}
+        />
+
+        {/* 已完成 */}
+        {completedEvents.length > 0 && (
+          <View style={styles.completedSection}>
+            <View style={styles.completedHeader}>
+              <FontAwesome6 name="circle-check" size={18} color="#00B894" />
+              <Text style={styles.completedTitle}>已完成</Text>
+              <View style={styles.completedCount}>
+                <Text style={styles.completedCountText}>{completedEvents.length}</Text>
+              </View>
+            </View>
+            {completedEvents.map(item => (
+              <EventCard
+                key={item.id}
+                item={item}
+                onToggleComplete={handleToggleComplete}
+                onEdit={openEditModal}
+                onPress={handlePress}
+              />
+            ))}
+          </View>
+        )}
+      </ScrollView>
 
       {/* FAB Button */}
       <TouchableOpacity style={styles.fab} onPress={openAddModal} activeOpacity={0.8}>
@@ -401,217 +587,295 @@ export default function HomeScreen() {
         </View>
       </TouchableOpacity>
 
-      {/* Voice Input Modal */}
-      <VoiceInputModal
-        visible={voiceModalVisible}
-        onClose={() => setVoiceModalVisible(false)}
-        onEventCreated={() => {
-          setVoiceModalVisible(false);
-          loadEvents();
-        }}
-      />
-
       {/* Add/Edit Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <TouchableWithoutFeedback onPress={() => setModalVisible(false)} disabled={Platform.OS === 'web'}>
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} disabled={Platform.OS === 'web'}>
           <KeyboardAvoidingView
             style={{ flex: 1 }}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           >
             <View style={styles.modalOverlay}>
-              <TouchableWithoutFeedback onPress={Keyboard.dismiss} disabled={Platform.OS === 'web'}>
-                <View style={styles.modalContent}>
-                  <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>
-                      {editingEvent ? '编辑事件' : '新增事件'}
-                    </Text>
-                    <TouchableOpacity onPress={() => setModalVisible(false)}>
-                      <FontAwesome6 name="xmark" size={20} color="#636E72" />
-                    </TouchableOpacity>
-                  </View>
-
-                  <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-                    <Text style={styles.inputLabel}>事件标题 *</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="输入事件标题"
-                      placeholderTextColor="#B2BEC3"
-                      value={formTitle}
-                      onChangeText={setFormTitle}
-                    />
-
-                    <Text style={styles.inputLabel}>事件描述</Text>
-                    <TextInput
-                      style={[styles.input, styles.textArea]}
-                      placeholder="输入事件描述（可选）"
-                      placeholderTextColor="#B2BEC3"
-                      value={formDesc}
-                      onChangeText={setFormDesc}
-                      multiline
-                      numberOfLines={3}
-                    />
-
-                    <Text style={styles.inputLabel}>性质分类</Text>
-                    <View style={styles.segmentRow}>
-                      {CATEGORIES.filter(c => c.key !== 'all').map(cat => (
-                        <TouchableOpacity
-                          key={cat.key}
-                          style={[
-                            styles.segmentBtn,
-                            formCategory === cat.key && { backgroundColor: `${cat.color}20` },
-                          ]}
-                          onPress={() => setFormCategory(cat.key)}
-                        >
-                          <Text
-                            style={[
-                              styles.segmentText,
-                              formCategory === cat.key && { color: cat.color, fontWeight: '700' },
-                            ]}
-                          >
-                            {cat.label}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-
-                    <Text style={styles.inputLabel}>重要等级</Text>
-                    <View style={styles.segmentRow}>
-                      {PRIORITIES.map(pri => (
-                        <TouchableOpacity
-                          key={pri.key}
-                          style={[
-                            styles.segmentBtn,
-                            formPriority === pri.key && { backgroundColor: `${pri.color}20` },
-                          ]}
-                          onPress={() => setFormPriority(pri.key)}
-                        >
-                          <Text
-                            style={[
-                              styles.segmentText,
-                              formPriority === pri.key && { color: pri.color, fontWeight: '700' },
-                            ]}
-                          >
-                            {pri.label}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-
-                    <Text style={styles.inputLabel}>相关人员</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="输入相关人员（可选）"
-                      placeholderTextColor="#B2BEC3"
-                      value={formPerson}
-                      onChangeText={setFormPerson}
-                    />
-
-                    <Text style={styles.inputLabel}>提醒时间</Text>
-                    <View style={styles.dateRow}>
-                      <TextInput
-                        style={[styles.input, { flex: 1 }]}
-                        placeholder="日期 YYYY-MM-DD"
-                        placeholderTextColor="#B2BEC3"
-                        value={formDate}
-                        onChangeText={setFormDate}
-                      />
-                      <TextInput
-                        style={[styles.input, { flex: 1 }]}
-                        placeholder="时间 HH:MM"
-                        placeholderTextColor="#B2BEC3"
-                        value={formTime}
-                        onChangeText={setFormTime}
-                      />
-                    </View>
-
-                    {editingEvent && (
-                      <TouchableOpacity
-                        style={styles.deleteBtn}
-                        onPress={() => {
-                          setModalVisible(false);
-                          handleDelete(editingEvent);
-                        }}
-                      >
-                        <FontAwesome6 name="trash" size={14} color="#FF6B6B" />
-                        <Text style={styles.deleteBtnText}>删除此事件</Text>
-                      </TouchableOpacity>
-                    )}
-                  </ScrollView>
-
-                  <View style={styles.modalFooter}>
-                    <TouchableOpacity
-                      style={[styles.modalBtn, styles.cancelBtn]}
-                      onPress={() => setModalVisible(false)}
-                    >
-                      <Text style={styles.cancelBtnText}>取消</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.modalBtn, styles.saveBtn]}
-                      onPress={handleSave}
-                    >
-                      <Text style={styles.saveBtnText}>保存</Text>
-                    </TouchableOpacity>
-                  </View>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>
+                    {editingEvent ? '编辑事件' : '新建事件'}
+                  </Text>
+                  <TouchableOpacity onPress={() => setModalVisible(false)}>
+                    <FontAwesome6 name="xmark" size={20} color="#636E72" />
+                  </TouchableOpacity>
                 </View>
-              </TouchableWithoutFeedback>
+
+                <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+                  <Text style={styles.label}>标题 *</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formTitle}
+                    onChangeText={setFormTitle}
+                    placeholder="输入事件标题"
+                    placeholderTextColor="#B2BEC3"
+                  />
+
+                  <Text style={styles.label}>描述</Text>
+                  <TextInput
+                    style={[styles.input, styles.textArea]}
+                    value={formDesc}
+                    onChangeText={setFormDesc}
+                    placeholder="输入事件描述（可选）"
+                    placeholderTextColor="#B2BEC3"
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                  />
+
+                  <Text style={styles.label}>分类</Text>
+                  <View style={styles.categoryRow}>
+                    {CATEGORIES.map(cat => (
+                      <TouchableOpacity
+                        key={cat.key}
+                        style={[
+                          styles.categoryOption,
+                          formCategory === cat.key && {
+                            backgroundColor: `${cat.color}20`,
+                            borderColor: cat.color,
+                          },
+                        ]}
+                        onPress={() => setFormCategory(cat.key as any)}
+                      >
+                        <FontAwesome6
+                          name={cat.icon as any}
+                          size={16}
+                          color={formCategory === cat.key ? cat.color : '#B2BEC3'}
+                        />
+                        <Text
+                          style={[
+                            styles.categoryOptionText,
+                            formCategory === cat.key && { color: cat.color },
+                          ]}
+                        >
+                          {cat.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <Text style={styles.label}>优先级</Text>
+                  <View style={styles.priorityRow}>
+                    {PRIORITIES.map(pri => (
+                      <TouchableOpacity
+                        key={pri.key}
+                        style={[
+                          styles.priorityOption,
+                          formPriority === pri.key && {
+                            backgroundColor: `${pri.color}20`,
+                            borderColor: pri.color,
+                          },
+                        ]}
+                        onPress={() => setFormPriority(pri.key as any)}
+                      >
+                        <Text
+                          style={[
+                            styles.priorityOptionText,
+                            formPriority === pri.key && { color: pri.color },
+                          ]}
+                        >
+                          {pri.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  <Text style={styles.label}>相关人员</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={formPerson}
+                    onChangeText={setFormPerson}
+                    placeholder="输入相关人员（可选）"
+                    placeholderTextColor="#B2BEC3"
+                  />
+
+                  <Text style={styles.label}>提醒时间</Text>
+                  <View style={styles.datetimeRow}>
+                    <TextInput
+                      style={[styles.input, styles.dateInput]}
+                      value={formDate}
+                      onChangeText={setFormDate}
+                      placeholder="YYYY-MM-DD"
+                      placeholderTextColor="#B2BEC3"
+                    />
+                    <TextInput
+                      style={[styles.input, styles.timeInput]}
+                      value={formTime}
+                      onChangeText={setFormTime}
+                      placeholder="HH:MM"
+                      placeholderTextColor="#B2BEC3"
+                    />
+                  </View>
+                </ScrollView>
+
+                <View style={styles.modalFooter}>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.cancelButton]}
+                    onPress={() => setModalVisible(false)}
+                  >
+                    <Text style={styles.cancelButtonText}>取消</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.submitButton]}
+                    onPress={handleSave}
+                  >
+                    <Text style={styles.submitButtonText}>保存</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
           </KeyboardAvoidingView>
         </TouchableWithoutFeedback>
       </Modal>
+
+      {/* Voice Input Modal */}
+      <VoiceInputModal
+        visible={voiceModalVisible}
+        onClose={() => setVoiceModalVisible(false)}
+        onEventCreated={handleEventCreated}
+      />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   header: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingBottom: 16,
-    backgroundColor: '#F0F0F3',
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: '800',
     color: '#2D3436',
+    letterSpacing: -0.5,
   },
   headerSubtitle: {
     fontSize: 14,
     color: '#636E72',
     marginTop: 4,
   },
-  filterRow: {
+  scrollView: {
+    flex: 1,
+  },
+  categorySection: {
+    marginBottom: 16,
+    marginHorizontal: 20,
+  },
+  categoryHeader: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 16,
     marginBottom: 12,
-    gap: 8,
   },
-  filterChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 9999,
-    backgroundColor: '#E8E8EB',
+  categoryHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
   },
-  filterChipText: {
-    fontSize: 13,
+  categoryTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  categoryCount: {
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+  },
+  categoryCountText: {
+    fontSize: 12,
     fontWeight: '600',
     color: '#636E72',
   },
-  cardOuter: {
+  emptyCategory: {
+    paddingVertical: 24,
+    alignItems: 'center',
+  },
+  emptyCategoryText: {
+    fontSize: 14,
+    color: '#B2BEC3',
+  },
+  dateSection: {
     marginBottom: 12,
-    borderRadius: 20,
-    shadowColor: '#D1D9E6',
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 6,
-    elevation: 4,
+  },
+  dateHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  dateTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#636E72',
+    flex: 1,
+  },
+  dateCount: {
+    backgroundColor: '#DFE6E9',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginRight: 8,
+  },
+  dateCountText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#636E72',
+  },
+  dateContent: {
+    gap: 10,
+  },
+  completedSection: {
+    marginHorizontal: 20,
+    marginTop: 8,
+  },
+  completedHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    gap: 10,
+  },
+  completedTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#00B894',
+    flex: 1,
+  },
+  completedCount: {
+    backgroundColor: '#00B89420',
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+  },
+  completedCountText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#00B894',
+  },
+  cardOuter: {
+    marginBottom: 10,
   },
   cardInner: {
-    backgroundColor: '#F0F0F3',
+    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 16,
-    shadowColor: '#FFFFFF',
-    shadowOffset: { width: -4, height: -4 },
-    shadowOpacity: 0.8,
-    shadowRadius: 6,
+    shadowColor: '#6C63FF',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
   },
   cardCompleted: {
     opacity: 0.6,
@@ -619,10 +883,20 @@ const styles = StyleSheet.create({
   cardTop: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 8,
+  },
+  checkboxOuter: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
   cardTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#2D3436',
     flex: 1,
   },
@@ -630,145 +904,130 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
     color: '#B2BEC3',
   },
-  cardPerson: {
-    fontSize: 12,
-    color: '#636E72',
-    marginTop: 4,
-  },
-  checkboxOuter: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#E8E8EB',
-  },
   editBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#E8E8EB',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 8,
+    padding: 8,
   },
-  cardBottom: {
+  cardDesc: {
+    fontSize: 13,
+    color: '#636E72',
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  cardMeta: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
-    gap: 8,
     flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 8,
   },
   tag: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 9999,
+    borderRadius: 8,
   },
   tagText: {
     fontSize: 11,
     fontWeight: '600',
   },
-  cardTime: {
+  personTag: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginLeft: 'auto',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: '#F0F0F3',
+    borderRadius: 8,
   },
-  timeText: {
+  personText: {
     fontSize: 11,
     color: '#636E72',
   },
-  timeTextOverdue: {
+  remindRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F3',
+  },
+  remindOverdue: {
+    borderTopColor: '#FF6B6B30',
+  },
+  remindText: {
+    fontSize: 12,
+    color: '#B2BEC3',
+  },
+  remindTextOverdue: {
     color: '#FF6B6B',
     fontWeight: '600',
   },
-  emptyContainer: {
-    alignItems: 'center',
-    paddingTop: 80,
-  },
-  emptyText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#636E72',
-    marginTop: 16,
-  },
-  emptySubText: {
-    fontSize: 13,
-    color: '#B2BEC3',
-    marginTop: 4,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#2D3436',
-    marginBottom: 12,
-  },
   fab: {
     position: 'absolute',
-    right: 24,
-    bottom: 80,
-  },
-  fabInner: {
+    right: 20,
+    bottom: 40,
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#6C63FF',
-    justifyContent: 'center',
-    alignItems: 'center',
     shadowColor: '#6C63FF',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  fabInner: {
+    flex: 1,
+    backgroundColor: '#6C63FF',
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   voiceFab: {
     position: 'absolute',
-    right: 24,
-    bottom: 148,
+    right: 20,
+    bottom: 110,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    shadowColor: '#00B894',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
   },
   voiceFabInner: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    flex: 1,
     backgroundColor: '#00B894',
-    justifyContent: 'center',
+    borderRadius: 28,
     alignItems: 'center',
-    shadowColor: '#00B894',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 6,
+    justifyContent: 'center',
   },
   modalOverlay: {
     flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.3)',
   },
   modalContent: {
-    backgroundColor: '#F0F0F3',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     maxHeight: '85%',
   },
   modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 12,
+    justifyContent: 'space-between',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F3',
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#2D3436',
   },
   modalBody: {
-    paddingHorizontal: 24,
-    paddingBottom: 16,
+    padding: 20,
   },
-  inputLabel: {
+  label: {
     fontSize: 13,
     fontWeight: '600',
     color: '#636E72',
@@ -776,81 +1035,91 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   input: {
-    backgroundColor: '#E8E8EB',
-    borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    backgroundColor: '#F0F0F3',
+    borderRadius: 12,
+    padding: 14,
     fontSize: 15,
     color: '#2D3436',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.6)',
   },
   textArea: {
     minHeight: 80,
-    textAlignVertical: 'top',
   },
-  segmentRow: {
+  categoryRow: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 10,
   },
-  segmentBtn: {
+  categoryOption: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: '#E8E8EB',
-    alignItems: 'center',
-  },
-  segmentText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#636E72',
-  },
-  dateRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  deleteBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    marginTop: 20,
+    gap: 6,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,107,107,0.1)',
+    borderWidth: 1.5,
+    borderColor: '#DFE6E9',
+    backgroundColor: '#F0F0F3',
   },
-  deleteBtnText: {
-    fontSize: 14,
+  categoryOptionText: {
+    fontSize: 13,
     fontWeight: '600',
-    color: '#FF6B6B',
+    color: '#B2BEC3',
+  },
+  priorityRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  priorityOption: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#DFE6E9',
+    backgroundColor: '#F0F0F3',
+  },
+  priorityOptionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#B2BEC3',
+  },
+  datetimeRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  dateInput: {
+    flex: 2,
+  },
+  timeInput: {
+    flex: 1,
   },
   modalFooter: {
     flexDirection: 'row',
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-    paddingTop: 12,
+    padding: 20,
     gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F3',
   },
-  modalBtn: {
+  modalButton: {
     flex: 1,
-    paddingVertical: 16,
-    borderRadius: 9999,
+    paddingVertical: 14,
+    borderRadius: 12,
     alignItems: 'center',
   },
-  cancelBtn: {
-    backgroundColor: '#E8E8EB',
+  cancelButton: {
+    backgroundColor: '#F0F0F3',
   },
-  cancelBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
+  cancelButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
     color: '#636E72',
   },
-  saveBtn: {
+  submitButton: {
     backgroundColor: '#6C63FF',
   },
-  saveBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
+  submitButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
     color: '#FFFFFF',
   },
 });

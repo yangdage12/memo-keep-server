@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { LogBox } from 'react-native';
-import { createContext, PropsWithChildren, use, useState } from 'react';
+import { createContext, PropsWithChildren, useState } from 'react';
 import { Provider } from '@/components/Provider';
 
 import '../global.css';

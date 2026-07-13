@@ -747,9 +747,11 @@ export default function HomeScreen() {
                     <DateTimePicker
                       value={selectedDate || new Date()}
                       mode="date"
-                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      display={Platform.OS === 'web' ? 'default' : Platform.OS === 'ios' ? 'spinner' : 'default'}
                       onChange={(event, date) => {
-                        setShowDatePicker(false);
+                        if (Platform.OS === 'web') {
+                          setShowDatePicker(false);
+                        }
                         if (date) {
                           setSelectedDate(date);
                           setFormDate(date.toISOString().split('T')[0]);
@@ -762,9 +764,11 @@ export default function HomeScreen() {
                     <DateTimePicker
                       value={selectedTime || new Date()}
                       mode="time"
-                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      display={Platform.OS === 'web' ? 'default' : Platform.OS === 'ios' ? 'spinner' : 'default'}
                       onChange={(event, date) => {
-                        setShowTimePicker(false);
+                        if (Platform.OS === 'web') {
+                          setShowTimePicker(false);
+                        }
                         if (date) {
                           setSelectedTime(date);
                           setFormTime(

@@ -419,7 +419,19 @@ export default function HomeScreen() {
 
     let remindTime: string | undefined;
     if (formDate && formTime) {
-      remindTime = new Date(`${formDate}T${formTime}`).toISOString();
+      // 验证日期时间格式
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      const timeRegex = /^\d{2}:\d{2}$/;
+      if (!dateRegex.test(formDate) || !timeRegex.test(formTime)) {
+        Alert.alert('提示', '请输入正确的日期时间格式（日期：YYYY-MM-DD，时间：HH:MM）');
+        return;
+      }
+      const dateObj = new Date(`${formDate}T${formTime}`);
+      if (isNaN(dateObj.getTime())) {
+        Alert.alert('提示', '无效的日期时间');
+        return;
+      }
+      remindTime = dateObj.toISOString();
     }
 
     try {

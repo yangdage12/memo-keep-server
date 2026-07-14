@@ -1,14 +1,38 @@
 import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
+import { Platform, Alert } from 'react-native';
 
 let isInitialized = false;
+let webNotificationPermission: NotificationPermission | null = null;
 
 export async function initNotifications(): Promise<void> {
   if (isInitialized) return;
 
   console.log('[Notifications] Initializing notifications...');
 
-  // 设置通知处理器
+  // Web 平台使用 Web Notification API
+  if (Platform.OS === 'web') {
+    if ('Notification' in window) {
+      try {
+        const permission = await Notification.requestPermission();
+        webNotificationPermission = permission;
+        console.log('[Notifications] Web notification permission:', permission);
+        
+        if (permission === 'granted') {
+          console.log('[Notifications] Web notifications enabled');
+        } else {
+          console.warn('[Notifications] Web notification permission denied');
+        }
+      } catch (error) {
+        console.error('[Notifications] Failed to request web notification permission:', error);
+      }
+    } else {
+      console.warn('[Notifications] Web Notification API not supported');
+    }
+    isInitialized = true;
+    return;
+  }
+
+  // 原生平台使用 expo-notifications
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
@@ -19,7 +43,6 @@ export async function initNotifications(): Promise<void> {
     }),
   });
 
-  // Android 通知渠道配置
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('event-reminders', {
       name: '事件提醒',
@@ -30,14 +53,11 @@ export async function initNotifications(): Promise<void> {
     });
   }
 
-  // 请求通知权限
   const { status } = await Notifications.requestPermissionsAsync();
-  console.log('[Notifications] Permission status:', status);
+  console.log('[Notifications] Native permission status:', status);
   
   if (status !== 'granted') {
-    console.warn('[Notifications] Notification permission not granted, status:', status);
-  } else {
-    console.log('[Notifications] Notification permission granted');
+    console.warn('[Notifications] Native notification permission not granted');
   }
 
   isInitialized = true;
@@ -67,6 +87,38 @@ export async function scheduleEventReminder(
     return null;
   }
 
+  // Web 平台使用 setTimeout + Web Notification API
+  if (Platform.OS === 'web') {
+    if (webNotificationPermission !== 'granted') {
+      console.warn('[Notifications] Web notification permission not granted');
+      return null;
+    }
+
+    const timeoutId = setTimeout(() => {
+      console.log('[Notifications] Web notification triggered:', title);
+      try {
+        const notification = new Notification(`事件提醒：${title}`, {
+          body: description || '您有一个重要事件即将开始',
+          icon: '/favicon.png',
+          badge: '/favicon.png',
+          tag: `event-${eventId}`,
+          requireInteraction: true,
+        });
+
+        notification.onclick = () => {
+          window.focus();
+          notification.close();
+        };
+      } catch (error) {
+        console.error('[Notifications] Failed to show web notification:', error);
+      }
+    }, timeDiff);
+
+    console.log('[Notifications] Web notification scheduled, timeoutId:', timeoutId);
+    return `web-${timeoutId}`;
+  }
+
+  // 原生平台使用 expo-notifications
   const channelId = Platform.OS === 'android' ? 'event-reminders' : undefined;
   const timestamp = remindTime.getTime();
 
@@ -85,10 +137,10 @@ export async function scheduleEventReminder(
       } as any,
     });
 
-    console.log('[Notifications] Notification scheduled successfully, id:', id);
+    console.log('[Notifications] Native notification scheduled, id:', id);
     return id;
   } catch (error) {
-    console.error('[Notifications] Failed to schedule notification:', error);
+    console.error('[Notifications] Failed to schedule native notification:', error);
     return null;
   }
 }
@@ -96,6 +148,34 @@ export async function scheduleEventReminder(
 export async function sendTestNotification(): Promise<void> {
   console.log('[Notifications] Sending test notification...');
   
+  if (Platform.OS === 'web') {
+    if (webNotificationPermission !== 'granted') {
+      console.warn('[Notifications] Web notification permission not granted');
+      Alert.alert('权限未授予', '请在浏览器中允许通知权限');
+      return;
+    }
+
+    try {
+      const notification = new Notification('测试通知', {
+        body: '如果你看到这条通知，说明通知功能正常工作！',
+        icon: '/favicon.png',
+        badge: '/favicon.png',
+        requireInteraction: true,
+      });
+
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+      };
+
+      console.log('[Notifications] Web test notification sent');
+    } catch (error) {
+      console.error('[Notifications] Failed to send web test notification:', error);
+    }
+    return;
+  }
+
+  // 原生平台
   try {
     const channelId = Platform.OS === 'android' ? 'event-reminders' : undefined;
     
@@ -106,16 +186,23 @@ export async function sendTestNotification(): Promise<void> {
         sound: 'default',
         ...(channelId ? { channelId } : {}),
       },
-      trigger: null, // 立即触发
+      trigger: null,
     } as any);
     
-    console.log('[Notifications] Test notification sent');
+    console.log('[Notifications] Native test notification sent');
   } catch (error) {
-    console.error('[Notifications] Failed to send test notification:', error);
+    console.error('[Notifications] Failed to send native test notification:', error);
   }
 }
 
 export async function cancelEventReminder(notificationId: string): Promise<void> {
+  if (notificationId.startsWith('web-')) {
+    const timeoutId = parseInt(notificationId.replace('web-', ''));
+    clearTimeout(timeoutId);
+    console.log('[Notifications] Web notification cancelled, timeoutId:', timeoutId);
+    return;
+  }
+
   await Notifications.cancelScheduledNotificationAsync(notificationId);
 }
 

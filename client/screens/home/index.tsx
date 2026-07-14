@@ -7,26 +7,17 @@ import {
   RefreshControl,
   Alert,
   Platform,
+  StyleSheet,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { Screen } from '@/components/Screen';
-import { fetchEvents, deleteEvent, toggleEventComplete } from '@/utils/api';
+import { fetchEvents, deleteEvent, toggleEventComplete, type EventItem } from '@/utils/api';
 import { useSafeRouter } from '@/hooks/useSafeRouter';
 import { format, parseISO, isToday, isTomorrow, isThisWeek, isThisMonth } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 
-interface Event {
-  id: number;
-  title: string;
-  description?: string;
-  category: 'work' | 'life' | 'family';
-  priority: 'high' | 'medium' | 'low';
-  person?: string;
-  remind_time?: string;
-  is_completed: boolean;
-  created_at: string;
-}
+type Event = EventItem;
 
 const CATEGORY_CONFIG = {
   work: { label: '工作', icon: 'briefcase' as const, color: '#6366f1', bg: '#eef2ff' },
@@ -250,7 +241,7 @@ export default function HomeScreen() {
   );
 }
 
-const styles = {
+const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f9fafb',
@@ -411,4 +402,4 @@ const styles = {
     color: '#9ca3af',
     marginTop: 8,
   },
-};
+});

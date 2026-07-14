@@ -131,6 +131,22 @@ export async function deleteEvent(id: number): Promise<void> {
   if (!json.success) throw new Error(json.error);
 }
 
+export async function toggleEventComplete(id: number, isCompleted: boolean): Promise<void> {
+  /**
+   * 服务端文件：server/src/routes/events.ts
+   * 接口：PATCH /api/v1/events/:id
+   * Path 参数：id: number
+   * Body 参数：is_completed: boolean
+   */
+  const response = await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/events/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ is_completed: isCompleted }),
+  });
+  const json = await response.json();
+  if (!json.success) throw new Error(json.error);
+}
+
 // ============ AI API ============
 
 export interface AIEventResult {

@@ -234,9 +234,9 @@ export async function scheduleEventReminder(
 
   // Web 平台使用 setTimeout + 后台检查机制
   if (Platform.OS === 'web') {
+    // 即使系统通知权限未授予，也要调度页面内提醒
     if (webNotificationPermission !== 'granted') {
-      console.warn('[Notifications] Web notification permission not granted');
-      return null;
+      console.log('[Notifications] Web notification permission not granted, but will use in-app reminder');
     }
 
     console.log('[Notifications] Web platform: scheduling with setTimeout + background check');

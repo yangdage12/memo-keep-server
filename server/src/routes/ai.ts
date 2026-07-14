@@ -75,7 +75,18 @@ router.post("/classify", async (req: Request, res: Response) => {
 - medium: 重要但不紧急，如计划、安排、常规事务
 - low: 不紧急也不重要，如日常记录、备忘
 
-请只返回 JSON，不要其他内容。`;
+请只返回 JSON，不要其他内容。
+
+**重要：日期识别规则**
+- 如果用户说"今天"，使用当前日期 ${new Date().toISOString().split('T')[0]}
+- 如果用户说"明天"，使用明天的日期
+- 如果用户说"后天"，使用后天的日期
+- 如果用户说"下周X"，计算对应的日期
+- 如果用户说"X天后"，计算对应的日期
+- 如果用户只说了时间（如"下午3点"），使用今天的日期加上该时间
+- 如果用户没有提到任何时间信息，不要返回 remind_time 字段
+
+**当前日期**: ${new Date().toISOString().split('T')[0]}`;
 
     const messages = [
       { role: "system" as const, content: systemPrompt },

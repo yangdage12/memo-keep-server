@@ -126,7 +126,7 @@ export default function HomeScreen() {
           styles.eventCard,
           item.is_completed && styles.eventCardCompleted,
         ]}
-        onPress={() => router.push('/detail', { id: item.id })}
+        onPress={() => router.push('/detail', { eventId: item.id })}
         onLongPress={() => handleDelete(item)}
       >
         <View style={styles.eventHeader}>

@@ -14,6 +14,7 @@ import { FontAwesome6 } from '@expo/vector-icons';
 import { Screen } from '@/components/Screen';
 import { createFormDataFile } from '@/utils';
 import { Audio } from 'expo-av';
+import { scheduleEventReminder } from '@/utils/notifications';
 
 export default function AddEventScreen() {
   const router = useSafeRouter();
@@ -82,6 +83,20 @@ export default function AddEventScreen() {
       const json = await response.json();
       if (!response.ok) throw new Error(json.error);
 
+      // 调度通知
+      if (json.event.remind_time) {
+        try {
+          await scheduleEventReminder(
+            json.event.id,
+            json.event.title,
+            json.event.description,
+            new Date(json.event.remind_time)
+          );
+        } catch (notifyErr) {
+          console.error('Schedule notification error:', notifyErr);
+        }
+      }
+
       Alert.alert('成功', `已创建事件：${json.event.title}`, [
         { text: '确定', onPress: () => router.back() },
       ]);
@@ -112,6 +127,20 @@ export default function AddEventScreen() {
 
       const json = await response.json();
       if (!response.ok) throw new Error(json.error);
+
+      // 调度通知
+      if (json.event.remind_time) {
+        try {
+          await scheduleEventReminder(
+            json.event.id,
+            json.event.title,
+            json.event.description,
+            new Date(json.event.remind_time)
+          );
+        } catch (notifyErr) {
+          console.error('Schedule notification error:', notifyErr);
+        }
+      }
 
       Alert.alert('成功', `已创建事件：${json.event.title}`, [
         { text: '确定', onPress: () => router.back() },

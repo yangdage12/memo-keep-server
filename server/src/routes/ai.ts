@@ -168,7 +168,7 @@ router.post("/smart-create", upload.single("audio"), async (req: Request, res: R
   "category": "work/life/family",
   "priority": "high/medium/low",
   "person": "相关人员（可选）",
-  "remind_time": "提醒时间 ISO 格式（可选，格式：YYYY-MM-DDTHH:MM:00Z）"
+  "remind_time": "提醒时间 ISO 格式（可选，格式：YYYY-MM-DDTHH:MM:00+08:00，必须带时区偏移）"
 }
 
 分类规则：
@@ -191,14 +191,16 @@ router.post("/smart-create", upload.single("audio"), async (req: Request, res: R
 4. "明天"、"明日" = 明天的日期
 5. "后天" = 后天的日期
 6. 如果只说了时间没说日期，默认是今天
-7. remind_time 必须是 ISO 格式：YYYY-MM-DDTHH:MM:00Z
+7. **remind_time 必须带时区偏移 +08:00（东八区），不要用 Z（UTC）**
+   - 正确示例：2026-07-14T14:35:00+08:00
+   - 错误示例：2026-07-14T14:35:00Z（这会导致时间偏移 8 小时）
 
 示例：
-- "14:35 取外卖" → remind_time: "${currentDateStr}T14:35:00Z"（下午 2 点 35 分，不是晚上 10 点 35 分）
-- "下午 3 点开会" → remind_time: "${currentDateStr}T15:00:00Z"
-- "晚上 8 点健身" → remind_time: "${currentDateStr}T20:00:00Z"
-- "上午 9 点会议" → remind_time: "${currentDateStr}T09:00:00Z"
-- "明天 14:35 取外卖" → remind_time: 明天的日期 + "T14:35:00Z"
+- "14:35 取外卖" → remind_time: "${currentDateStr}T14:35:00+08:00"（下午 2 点 35 分，不是晚上 10 点 35 分）
+- "下午 3 点开会" → remind_time: "${currentDateStr}T15:00:00+08:00"
+- "晚上 8 点健身" → remind_time: "${currentDateStr}T20:00:00+08:00"
+- "上午 9 点会议" → remind_time: "${currentDateStr}T09:00:00+08:00"
+- "明天 14:35 取外卖" → remind_time: 明天的日期 + "T14:35:00+08:00"
 
 请只返回 JSON，不要其他内容。`;
 

@@ -159,7 +159,7 @@ router.post("/smart-create", upload.single("audio"), async (req: Request, res: R
     const systemPrompt = `你是一个智能事件分类助手。请分析用户输入的内容，提取事件信息并返回 JSON 格式。
 
 当前日期：${currentDateStr}（${['日', '一', '二', '三', '四', '五', '六'][currentDate.getDay()]}）
-当前时间：${currentTimeStr}
+当前时间：${currentTimeStr}（24 小时制）
 
 返回格式：
 {
@@ -181,14 +181,24 @@ router.post("/smart-create", upload.single("audio"), async (req: Request, res: R
 - medium: 一般重要
 - low: 不紧急
 
-日期识别规则：
-- "今天"、"今日" = ${currentDateStr}
-- "明天"、"明日" = 明天的日期
-- "后天" = 后天的日期
-- "大后天" = 大后天的日期
-- "下周 X" = 下周对应星期几的日期
-- 如果只说了时间（如"10 点 07"），默认是今天
-- 如果没有提到日期，remind_time 设为 null
+时间识别规则（非常重要）：
+1. 用户输入的时间如果是 24 小时制（如 14:35、18:00、22:00），直接使用，不要转换
+2. 如果用户输入的是 12 小时制（如下午 2:35、晚上 8 点、上午 9 点），需要转换为 24 小时制
+   - 上午/早上 + 时间 = 直接使用（上午 9 点 = 09:00）
+   - 下午/晚上 + 时间 = 加 12 小时（下午 2:35 = 14:35，晚上 8 点 = 20:00）
+   - 中午 12 点 = 12:00
+3. "今天"、"今日" = ${currentDateStr}
+4. "明天"、"明日" = 明天的日期
+5. "后天" = 后天的日期
+6. 如果只说了时间没说日期，默认是今天
+7. remind_time 必须是 ISO 格式：YYYY-MM-DDTHH:MM:00Z
+
+示例：
+- "14:35 取外卖" → remind_time: "${currentDateStr}T14:35:00Z"（下午 2 点 35 分，不是晚上 10 点 35 分）
+- "下午 3 点开会" → remind_time: "${currentDateStr}T15:00:00Z"
+- "晚上 8 点健身" → remind_time: "${currentDateStr}T20:00:00Z"
+- "上午 9 点会议" → remind_time: "${currentDateStr}T09:00:00Z"
+- "明天 14:35 取外卖" → remind_time: 明天的日期 + "T14:35:00Z"
 
 请只返回 JSON，不要其他内容。`;
 

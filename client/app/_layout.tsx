@@ -1,8 +1,11 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { LogBox } from 'react-native';
-import { createContext, PropsWithChildren, useState } from 'react';
+import { createContext, PropsWithChildren, useEffect, useState } from 'react';
 import { Provider } from '@/components/Provider';
+import * as Notifications from 'expo-notifications';
+import { initNotifications } from '@/utils/notifications';
+import { useSafeRouter } from '@/hooks/useSafeRouter';
 
 import '../global.css';
 
@@ -29,6 +32,25 @@ function LinkPreviewContextProvider({ children }: PropsWithChildren) {
 }
 
 export default function RootLayout() {
+  const router = useSafeRouter();
+
+  useEffect(() => {
+    // 初始化通知
+    initNotifications();
+
+    // 监听通知点击事件
+    const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+      const eventId = response.notification.request.content.data?.eventId;
+      if (eventId) {
+        router.push('/detail', { id: eventId });
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [router]);
+
   return (
     <LinkPreviewContextProvider>
       <Provider>

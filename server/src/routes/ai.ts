@@ -152,7 +152,14 @@ router.post("/smart-create", upload.single("audio"), async (req: Request, res: R
     const classifyConfig = new Config();
     const llmClient = new LLMClient(classifyConfig, classifyHeaders);
 
+    const currentDate = new Date();
+    const currentDateStr = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD
+    const currentTimeStr = currentDate.toTimeString().slice(0, 5); // HH:MM
+
     const systemPrompt = `你是一个智能事件分类助手。请分析用户输入的内容，提取事件信息并返回 JSON 格式。
+
+当前日期：${currentDateStr}（${['日', '一', '二', '三', '四', '五', '六'][currentDate.getDay()]}）
+当前时间：${currentTimeStr}
 
 返回格式：
 {
@@ -161,7 +168,7 @@ router.post("/smart-create", upload.single("audio"), async (req: Request, res: R
   "category": "work/life/family",
   "priority": "high/medium/low",
   "person": "相关人员（可选）",
-  "remind_time": "提醒时间 ISO 格式（可选）"
+  "remind_time": "提醒时间 ISO 格式（可选，格式：YYYY-MM-DDTHH:MM:00Z）"
 }
 
 分类规则：
@@ -173,6 +180,15 @@ router.post("/smart-create", upload.single("audio"), async (req: Request, res: R
 - high: 紧急重要（截止日期近、重要会议等）
 - medium: 一般重要
 - low: 不紧急
+
+日期识别规则：
+- "今天"、"今日" = ${currentDateStr}
+- "明天"、"明日" = 明天的日期
+- "后天" = 后天的日期
+- "大后天" = 大后天的日期
+- "下周 X" = 下周对应星期几的日期
+- 如果只说了时间（如"10 点 07"），默认是今天
+- 如果没有提到日期，remind_time 设为 null
 
 请只返回 JSON，不要其他内容。`;
 

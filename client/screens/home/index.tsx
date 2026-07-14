@@ -8,6 +8,7 @@ import {
   Alert,
   Platform,
   StyleSheet,
+  Modal,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { FontAwesome6 } from '@expo/vector-icons';
@@ -16,7 +17,7 @@ import { fetchEvents, deleteEvent, toggleEventComplete, type EventItem } from '@
 import { useSafeRouter } from '@/hooks/useSafeRouter';
 import { format, parseISO, isToday, isTomorrow, isThisWeek, isThisMonth } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
-import { initNotifications, sendTestNotification } from '@/utils/notifications';
+import { initNotifications, sendTestNotification, setInAppReminderCallback } from '@/utils/notifications';
 
 type Event = EventItem;
 
@@ -63,6 +64,12 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [notifStatus, setNotifStatus] = useState<string>('检查中...');
+  const [reminderModal, setReminderModal] = useState<{visible: boolean; title: string; description: string; eventId: number}>({
+    visible: false,
+    title: '',
+    description: '',
+    eventId: 0,
+  });
 
   // 初始化通知并检查权限
   useEffect(() => {
@@ -70,6 +77,22 @@ export default function HomeScreen() {
       const status = await initNotifications();
       setNotifStatus(status);
       console.log('[Home] Notification status:', status);
+      
+      // 注册页面内提醒回调
+      setInAppReminderCallback((eventId, title, description) => {
+        console.log('[Home] In-app reminder triggered:', title);
+        setReminderModal({visible: true, title, description, eventId});
+        // 播放提示音
+        if (Platform.OS === 'web') {
+          // Web 平台使用 Audio API
+          try {
+            const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBDGH0fPTgjMGHm7A7+OZSA0PVqzn77BdGAg+ltryxnkpBSl+zPDajzsKElyx6emxYBcJP5Xh8blmHAU2jNn1yHkpBSh+zPDZjzoMEFqx6OyrWBUIQ5Pf8sFyIgUuhM/z2Yk2CBFcsunpr1sWB0KR4PLBciMFLoLP8tiINQgRXLDp6K9bFgZCkeDyvnIiBSuBzvLZiDUIEVyw6eivWxYGQpHg8r5yIgUrgc7y2Yg1CBFcsunpr1sWBkKR4PK+ciIFK4HO8tmINQgRXLDp6K9bFgZCkeDyvnIiBSuBzvLZiDUIEVyw6eivWxYGQpHg8r5yIgUrgc7y2Yg1CBFcsunpr1sWBkKR4PK+ciIF');
+            audio.play();
+          } catch (e) {
+            console.log('[Home] Failed to play sound:', e);
+          }
+        }
+      });
     };
     checkNotif();
   }, []);
@@ -265,6 +288,33 @@ export default function HomeScreen() {
             </View>
           }
         />
+
+        {/* 页面内提醒 Modal */}
+        <Modal
+          visible={reminderModal.visible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setReminderModal({...reminderModal, visible: false})}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalIcon}>
+                <FontAwesome6 name="bell" size={40} color="#6C63FF" />
+              </View>
+              <Text style={styles.modalTitle}>{reminderModal.title}</Text>
+              <Text style={styles.modalDescription}>{reminderModal.description || '您有一个重要事件即将开始'}</Text>
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={() => {
+                  setReminderModal({...reminderModal, visible: false});
+                  router.push('/detail', { id: reminderModal.eventId });
+                }}
+              >
+                <Text style={styles.modalButtonText}>查看详情</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </View>
     </Screen>
   );
@@ -447,5 +497,61 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9ca3af',
     marginTop: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 32,
+    width: '100%',
+    maxWidth: 320,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  modalIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#f3f4f6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1f2937',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  modalDescription: {
+    fontSize: 15,
+    color: '#6b7280',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  modalButton: {
+    backgroundColor: '#6366f1',
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+    borderRadius: 12,
+    width: '100%',
+  },
+  modalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });

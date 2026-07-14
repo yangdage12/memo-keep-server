@@ -13,6 +13,14 @@ let pendingNotifications: Array<{
 }> = [];
 let checkInterval: ReturnType<typeof setInterval> | null = null;
 
+// 页面内提醒回调（当系统通知不可用时使用）
+let onInAppReminder: ((eventId: number, title: string, description: string) => void) | null = null;
+
+export function setInAppReminderCallback(callback: (eventId: number, title: string, description: string) => void) {
+  onInAppReminder = callback;
+  console.log('[Notifications] In-app reminder callback registered');
+}
+
 // 启动后台检查（每 10 秒检查一次）
 function startBackgroundCheck() {
   if (checkInterval) return;
@@ -66,34 +74,48 @@ function triggerWebNotification(notif: {
   description: string;
   remindTime: Date;
 }) {
-  console.log('[Notifications] Triggering web notification:', notif.title);
+  console.log('[Notifications] Triggering notification for event:', notif.eventId, notif.title);
   
+  // 优先使用页面内提醒（兼容所有环境）
+  if (onInAppReminder) {
+    console.log('[Notifications] Using in-app reminder callback');
+    onInAppReminder(notif.eventId, notif.title, notif.description);
+    return;
+  }
+  
+  // 降级使用系统通知
   try {
-    const notification = new Notification(notif.title, {
-      body: notif.description || '事件提醒',
-      icon: '/favicon.ico',
-      badge: '/favicon.ico',
-      tag: `event-${notif.eventId}`,
-      requireInteraction: true, // 保持通知直到用户交互
-    });
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      const notification = new Notification(notif.title, {
+        body: notif.description || '事件提醒',
+        icon: '/favicon.ico',
+        badge: '/favicon.ico',
+        tag: `event-${notif.eventId}`,
+        requireInteraction: true,
+      });
 
-    notification.onclick = () => {
-      console.log('[Notifications] Notification clicked, focusing window');
-      window.focus();
-      // 可以通过自定义事件通知应用跳转到详情页
-      window.dispatchEvent(new CustomEvent('notification-clicked', {
-        detail: { eventId: notif.eventId }
-      }));
-      notification.close();
-    };
+      notification.onclick = () => {
+        console.log('[Notifications] Notification clicked, focusing window');
+        window.focus();
+        window.dispatchEvent(new CustomEvent('notification-clicked', {
+          detail: { eventId: notif.eventId }
+        }));
+        notification.close();
+      };
 
-    notification.onerror = (error) => {
-      console.error('[Notifications] Notification error:', error);
-    };
+      notification.onerror = (error) => {
+        console.error('[Notifications] Notification error:', error);
+      };
 
-    console.log('[Notifications] Web notification triggered successfully');
+      console.log('[Notifications] Web notification triggered successfully');
+    } else {
+      console.warn('[Notifications] Notification API not available, using alert');
+      Alert.alert('事件提醒', `${notif.title}\n${notif.description || '您有一个重要事件即将开始'}`, [{ text: '知道了' }]);
+    }
   } catch (error) {
-    console.error('[Notifications] Failed to trigger web notification:', error);
+    console.error('[Notifications] Failed to trigger notification:', error);
+    // 最后的降级方案
+    Alert.alert('事件提醒', `${notif.title}\n${notif.description || '您有一个重要事件即将开始'}`, [{ text: '知道了' }]);
   }
 }
 

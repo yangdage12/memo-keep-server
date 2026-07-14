@@ -16,6 +16,7 @@ import { fetchEvents, deleteEvent, toggleEventComplete, type EventItem } from '@
 import { useSafeRouter } from '@/hooks/useSafeRouter';
 import { format, parseISO, isToday, isTomorrow, isThisWeek, isThisMonth } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
+import { initNotifications, sendTestNotification } from '@/utils/notifications';
 
 type Event = EventItem;
 
@@ -61,6 +62,11 @@ export default function HomeScreen() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+
+  // 初始化通知
+  useEffect(() => {
+    initNotifications();
+  }, []);
 
   const loadEvents = useCallback(async () => {
     try {
@@ -112,6 +118,12 @@ export default function HomeScreen() {
         },
       ]
     );
+  };
+
+  const handleTestNotification = async () => {
+    console.log('[Home] Testing notification...');
+    await sendTestNotification();
+    Alert.alert('测试通知已发送', '请检查是否收到通知提示');
   };
 
   const groupedEvents = groupEventsByDate(events);
@@ -201,12 +213,20 @@ export default function HomeScreen() {
             <Text style={styles.headerTitle}>MemoKeep</Text>
             <Text style={styles.headerSubtitle}>记录每一个重要时刻</Text>
           </View>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => router.push('/add-event')}
-          >
-            <FontAwesome6 name="plus" size={20} color="#fff" />
-          </TouchableOpacity>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity
+              style={styles.testButton}
+              onPress={handleTestNotification}
+            >
+              <FontAwesome6 name="bell" size={18} color="#6366f1" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => router.push('/add-event')}
+            >
+              <FontAwesome6 name="plus" size={20} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Event List */}
@@ -254,6 +274,18 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 16,
     backgroundColor: '#fff',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  testButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#eef2ff',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 28,

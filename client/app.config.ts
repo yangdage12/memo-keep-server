@@ -73,6 +73,14 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         {
           "microphonePermission": `记事提醒 App 需要访问麦克风以进行语音输入。`
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#6C63FF",
+          "sounds": []
+        }
       ]
     ],
     "experiments": {

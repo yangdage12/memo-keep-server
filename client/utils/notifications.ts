@@ -94,8 +94,12 @@ export async function scheduleEventReminder(
       return null;
     }
 
+    console.log('[Notifications] Web platform: scheduling with setTimeout, delay:', timeDiff, 'ms');
+    
     const timeoutId = setTimeout(() => {
-      console.log('[Notifications] Web notification triggered:', title);
+      console.log('[Notifications] Web notification triggered at:', new Date().toISOString());
+      console.log('[Notifications] Notification content:', { title, description, eventId });
+      
       try {
         const notification = new Notification(`事件提醒：${title}`, {
           body: description || '您有一个重要事件即将开始',
@@ -103,12 +107,24 @@ export async function scheduleEventReminder(
           badge: '/favicon.png',
           tag: `event-${eventId}`,
           requireInteraction: true,
+          silent: false,
         });
 
         notification.onclick = () => {
+          console.log('[Notifications] Notification clicked');
           window.focus();
           notification.close();
         };
+
+        notification.onshow = () => {
+          console.log('[Notifications] Notification shown');
+        };
+
+        notification.onerror = (error) => {
+          console.error('[Notifications] Notification error:', error);
+        };
+
+        console.log('[Notifications] Web notification created successfully');
       } catch (error) {
         console.error('[Notifications] Failed to show web notification:', error);
       }

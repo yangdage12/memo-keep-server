@@ -85,16 +85,29 @@ export default function AddEventScreen() {
 
       // 调度通知
       if (json.event.remind_time) {
+        console.log('[AddEvent] Event created with remind_time:', json.event.remind_time);
+        console.log('[AddEvent] Parsing date:', new Date(json.event.remind_time));
+        
         try {
-          await scheduleEventReminder(
-            json.event.id,
-            json.event.title,
-            json.event.description,
-            new Date(json.event.remind_time)
-          );
+          const remindDate = new Date(json.event.remind_time);
+          
+          if (isNaN(remindDate.getTime())) {
+            console.error('[AddEvent] Invalid remind_time date:', json.event.remind_time);
+          } else {
+            console.log('[AddEvent] Scheduling notification for:', remindDate.toISOString());
+            const notificationId = await scheduleEventReminder(
+              json.event.id,
+              json.event.title,
+              json.event.description,
+              remindDate
+            );
+            console.log('[AddEvent] Notification scheduled, id:', notificationId);
+          }
         } catch (notifyErr) {
-          console.error('Schedule notification error:', notifyErr);
+          console.error('[AddEvent] Schedule notification error:', notifyErr);
         }
+      } else {
+        console.log('[AddEvent] No remind_time in event, skipping notification');
       }
 
       Alert.alert('成功', `已创建事件：${json.event.title}`, [

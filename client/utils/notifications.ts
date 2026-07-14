@@ -73,17 +73,18 @@ export async function scheduleEventReminder(
   const now = new Date();
   const timeDiff = remindTime.getTime() - now.getTime();
   
-  console.log('[Notifications] Scheduling reminder:', {
-    eventId,
-    title,
-    remindTime: remindTime.toISOString(),
-    now: now.toISOString(),
-    timeDiffMs: timeDiff,
-    timeDiffMin: Math.round(timeDiff / 60000),
-  });
+  console.log('[Notifications] === Scheduling reminder ===');
+  console.log('[Notifications] eventId:', eventId);
+  console.log('[Notifications] title:', title);
+  console.log('[Notifications] remindTime:', remindTime.toISOString());
+  console.log('[Notifications] now:', now.toISOString());
+  console.log('[Notifications] timeDiff:', timeDiff, 'ms');
+  console.log('[Notifications] timeDiff:', Math.round(timeDiff / 1000), 'seconds');
+  console.log('[Notifications] timeDiff:', Math.round(timeDiff / 60000), 'minutes');
 
   if (remindTime <= now) {
-    console.log('[Notifications] Reminder time is in the past, skipping');
+    console.log('[Notifications] ⚠️ Reminder time is in the past or now, skipping');
+    console.log('[Notifications] remindTime <= now:', remindTime <= now);
     return null;
   }
 
@@ -94,11 +95,13 @@ export async function scheduleEventReminder(
       return null;
     }
 
-    console.log('[Notifications] Web platform: scheduling with setTimeout, delay:', timeDiff, 'ms');
+    console.log('[Notifications] Web platform: scheduling with setTimeout');
+    console.log('[Notifications] Delay:', timeDiff, 'ms');
     
     const timeoutId = setTimeout(() => {
-      console.log('[Notifications] Web notification triggered at:', new Date().toISOString());
-      console.log('[Notifications] Notification content:', { title, description, eventId });
+      console.log('[Notifications]  Web notification triggered!');
+      console.log('[Notifications] Title:', title);
+      console.log('[Notifications] Description:', description);
       
       try {
         const notification = new Notification(`事件提醒：${title}`, {
@@ -135,6 +138,7 @@ export async function scheduleEventReminder(
   }
 
   // 原生平台使用 expo-notifications
+  console.log('[Notifications] Native platform: scheduling with expo-notifications');
   const channelId = Platform.OS === 'android' ? 'event-reminders' : undefined;
   const timestamp = remindTime.getTime();
 
@@ -162,7 +166,7 @@ export async function scheduleEventReminder(
 }
 
 export async function sendTestNotification(): Promise<void> {
-  console.log('[Notifications] Sending test notification...');
+  console.log('[Notifications] === Sending test notification ===');
   
   if (Platform.OS === 'web') {
     if (webNotificationPermission !== 'granted') {
@@ -177,6 +181,7 @@ export async function sendTestNotification(): Promise<void> {
         icon: '/favicon.png',
         badge: '/favicon.png',
         requireInteraction: true,
+        silent: false,
       });
 
       notification.onclick = () => {

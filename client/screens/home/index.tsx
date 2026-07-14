@@ -62,10 +62,16 @@ export default function HomeScreen() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [notifStatus, setNotifStatus] = useState<string>('检查中...');
 
-  // 初始化通知
+  // 初始化通知并检查权限
   useEffect(() => {
-    initNotifications();
+    const checkNotif = async () => {
+      const status = await initNotifications();
+      setNotifStatus(status);
+      console.log('[Home] Notification status:', status);
+    };
+    checkNotif();
   }, []);
 
   const loadEvents = useCallback(async () => {
@@ -212,6 +218,9 @@ export default function HomeScreen() {
           <View>
             <Text style={styles.headerTitle}>MemoKeep</Text>
             <Text style={styles.headerSubtitle}>记录每一个重要时刻</Text>
+            {Platform.OS === 'web' && (
+              <Text style={styles.notifStatus}>通知：{notifStatus}</Text>
+            )}
           </View>
           <View style={styles.headerButtons}>
             <TouchableOpacity
@@ -296,6 +305,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6b7280',
     marginTop: 2,
+  },
+  notifStatus: {
+    fontSize: 12,
+    color: '#10b981',
+    marginTop: 4,
   },
   addButton: {
     width: 44,

@@ -109,8 +109,8 @@ function removePendingNotification(id: string) {
   }
 }
 
-export async function initNotifications(): Promise<void> {
-  if (isInitialized) return;
+export async function initNotifications(): Promise<string> {
+  if (isInitialized) return webNotificationPermission === 'granted' ? '已启用 ✓' : '未授权 ✗';
 
   console.log('[Notifications] Initializing notifications...');
 
@@ -127,22 +127,28 @@ export async function initNotifications(): Promise<void> {
           // 启动后台检查和可见性监听
           startBackgroundCheck();
           setupVisibilityListener();
+          isInitialized = true;
+          return '已启用 ✓';
         } else {
           console.warn('[Notifications] Web notification permission denied');
           Alert.alert(
             '通知权限未授予',
             '请在浏览器设置中允许通知权限，否则无法收到提醒'
           );
+          isInitialized = true;
+          return '未授权 ✗';
         }
       } catch (error) {
         console.error('[Notifications] Failed to request web notification permission:', error);
+        isInitialized = true;
+        return '授权失败';
       }
     } else {
       console.warn('[Notifications] Web Notification API not supported');
       Alert.alert('不支持', '当前浏览器不支持通知功能');
+      isInitialized = true;
+      return '不支持';
     }
-    isInitialized = true;
-    return;
   }
 
   // 原生平台使用 expo-notifications
@@ -171,10 +177,13 @@ export async function initNotifications(): Promise<void> {
   
   if (status !== 'granted') {
     console.warn('[Notifications] Native notification permission not granted');
+    isInitialized = true;
+    return '未授权 ✗';
   }
 
   isInitialized = true;
   console.log('[Notifications] Notifications initialized successfully');
+  return '已启用 ✓';
 }
 
 export async function scheduleEventReminder(

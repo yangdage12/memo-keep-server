@@ -3,7 +3,7 @@ import { Platform, Alert } from 'react-native';
 
 let isInitialized = false;
 let webNotificationPermission: NotificationPermission | null = null;
-let pendingNotifications: Array<{
+const pendingNotifications: Array<{
   id: string;
   eventId: number;
   title: string;
@@ -227,7 +227,7 @@ export async function scheduleEventReminder(
   console.log('[Notifications] timeDiff:', Math.round(timeDiff / 60000), 'minutes');
 
   if (remindTime <= now) {
-    console.log('[Notifications] ⚠️ Reminder time is in the past or now, skipping');
+    console.log('[Notifications] [WARN] Reminder time is in the past or now, skipping');
     console.log('[Notifications] remindTime <= now:', remindTime <= now);
     return null;
   }
@@ -243,7 +243,14 @@ export async function scheduleEventReminder(
     console.log('[Notifications] Delay:', timeDiff, 'ms');
     
     const notifId = `web-${eventId}-${Date.now()}`;
-    const notifData = {
+    const notifData: {
+      id: string;
+      eventId: number;
+      title: string;
+      description: string;
+      remindTime: Date;
+      timeoutId?: ReturnType<typeof setTimeout>;
+    } = {
       id: notifId,
       eventId,
       title,

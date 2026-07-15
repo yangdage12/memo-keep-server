@@ -5,6 +5,7 @@ import { createContext, PropsWithChildren, useEffect, useState } from 'react';
 import { Provider } from '@/components/Provider';
 import * as Notifications from 'expo-notifications';
 import { initNotifications } from '@/utils/notifications';
+import { initBackendUrl } from '@/utils/backendUrl';
 import { useSafeRouter } from '@/hooks/useSafeRouter';
 
 import '../global.css';
@@ -35,6 +36,9 @@ export default function RootLayout() {
   const router = useSafeRouter();
 
   useEffect(() => {
+    // 初始化后端 URL
+    initBackendUrl();
+
     // 初始化通知
     initNotifications();
 
@@ -65,6 +69,7 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="detail" />
           <Stack.Screen name="add-event" />
+          <Stack.Screen name="settings" />
         </Stack>
       </Provider>
     </LinkPreviewContextProvider>

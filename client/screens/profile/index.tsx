@@ -4,9 +4,11 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  TouchableOpacity,
 } from 'react-native';
 import { Screen } from '@/components/Screen';
 import { useFocusEffect } from 'expo-router';
+import { useSafeRouter } from '@/hooks/useSafeRouter';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { fetchEventStats, type EventStats } from '@/utils/api';
@@ -25,6 +27,7 @@ const PRIORITY_CONFIG = [
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
+  const router = useSafeRouter();
   const [stats, setStats] = useState<EventStats | null>(null);
 
   const loadStats = useCallback(async () => {
@@ -49,8 +52,18 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-          <Text style={styles.headerTitle}>我的</Text>
-          <Text style={styles.headerSubtitle}>事件统计概览</Text>
+          <View style={styles.headerRow}>
+            <View>
+              <Text style={styles.headerTitle}>我的</Text>
+              <Text style={styles.headerSubtitle}>事件统计概览</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.settingsButton}
+              onPress={() => router.push('/settings')}
+            >
+              <FontAwesome6 name="gear" size={22} color="#636E72" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Stats Overview */}
@@ -148,6 +161,24 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 24,
     paddingBottom: 16,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  settingsButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F0F0F3',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#D1D9E6',
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 2,
   },
   headerTitle: {
     fontSize: 28,

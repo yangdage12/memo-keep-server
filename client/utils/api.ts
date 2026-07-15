@@ -1,4 +1,4 @@
-const EXPO_PUBLIC_BACKEND_BASE_URL = process.env.EXPO_PUBLIC_BACKEND_BASE_URL;
+import { getBackendUrl } from './backendUrl';
 
 export interface EventItem {
   id: number;
@@ -34,7 +34,7 @@ export async function fetchEvents(params?: {
   if (params?.is_completed !== undefined) searchParams.set('is_completed', String(params.is_completed));
 
   const query = searchParams.toString();
-  const url = `${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/events${query ? `?${query}` : ''}`;
+  const url = `${getBackendUrl()}/api/v1/events${query ? `?${query}` : ''}`;
 
   /**
    * 服务端文件：server/src/routes/events.ts
@@ -53,7 +53,7 @@ export async function fetchEventById(id: number): Promise<EventItem> {
    * 接口：GET /api/v1/events/:id
    * Path 参数：id: number
    */
-  const response = await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/events/${id}`);
+  const response = await fetch(`${getBackendUrl()}/api/v1/events/${id}`);
   const json = await response.json();
   if (!json.success) throw new Error(json.error);
   return json.data;
@@ -64,7 +64,7 @@ export async function fetchEventStats(): Promise<EventStats> {
    * 服务端文件：server/src/routes/events.ts
    * 接口：GET /api/v1/events/stats
    */
-  const response = await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/events/stats`);
+  const response = await fetch(`${getBackendUrl()}/api/v1/events/stats`);
   const json = await response.json();
   if (!json.success) throw new Error(json.error);
   return json.data;
@@ -83,7 +83,7 @@ export async function createEvent(data: {
    * 接口：POST /api/v1/events
    * Body 参数：title: string, description?: string, category: string, priority: string, person?: string, remind_time?: string
    */
-  const response = await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/events`, {
+  const response = await fetch(`${getBackendUrl()}/api/v1/events`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -108,7 +108,7 @@ export async function updateEvent(id: number, data: {
    * Path 参数：id: number
    * Body 参数：title?: string, description?: string, category?: string, priority?: string, person?: string, remind_time?: string, is_completed?: boolean
    */
-  const response = await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/events/${id}`, {
+  const response = await fetch(`${getBackendUrl()}/api/v1/events/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -124,7 +124,7 @@ export async function deleteEvent(id: number): Promise<void> {
    * 接口：DELETE /api/v1/events/:id
    * Path 参数：id: number
    */
-  const response = await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/events/${id}`, {
+  const response = await fetch(`${getBackendUrl()}/api/v1/events/${id}`, {
     method: 'DELETE',
   });
   const json = await response.json();
@@ -138,7 +138,7 @@ export async function toggleEventComplete(id: number, isCompleted: boolean): Pro
    * Path 参数：id: number
    * Body 参数：is_completed: boolean
    */
-  const response = await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/events/${id}`, {
+  const response = await fetch(`${getBackendUrl()}/api/v1/events/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ is_completed: isCompleted }),
@@ -180,7 +180,7 @@ export async function transcribeAudio(audioUri: string): Promise<{ text: string;
   const fileBlob = await fileResponse.blob();
   formData.append('audio', fileBlob as any, 'recording.m4a');
 
-  const response = await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/ai/transcribe`, {
+  const response = await fetch(`${getBackendUrl()}/api/v1/ai/transcribe`, {
     method: 'POST',
     body: formData,
   });
@@ -195,7 +195,7 @@ export async function classifyEvent(text: string): Promise<AIEventResult> {
    * 接口：POST /api/v1/ai/classify
    * Body 参数：text: string
    */
-  const response = await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/ai/classify`, {
+  const response = await fetch(`${getBackendUrl()}/api/v1/ai/classify`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text }),
@@ -219,7 +219,7 @@ export async function smartCreateEvent(text?: string, audioUri?: string): Promis
     formData.append('audio', fileBlob as any, 'recording.m4a');
   }
 
-  const response = await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/ai/smart-create`, {
+  const response = await fetch(`${getBackendUrl()}/api/v1/ai/smart-create`, {
     method: 'POST',
     body: formData,
   });
@@ -234,7 +234,7 @@ export async function generateReport(type: string, period: string): Promise<{ re
    * 接口：POST /api/v1/ai/generate-report
    * Body 参数：type: string, period: string
    */
-  const response = await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/ai/generate-report`, {
+  const response = await fetch(`${getBackendUrl()}/api/v1/ai/generate-report`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ type, period }),
@@ -249,7 +249,7 @@ export async function fetchReports(): Promise<ReportItem[]> {
    * 服务端文件：server/src/routes/ai.ts
    * 接口：GET /api/v1/ai/reports
    */
-  const response = await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/ai/reports`);
+  const response = await fetch(`${getBackendUrl()}/api/v1/ai/reports`);
   const json = await response.json();
   if (!response.ok) throw new Error(json.error);
   return json;
@@ -261,7 +261,7 @@ export async function fetchReportById(id: number): Promise<ReportItem> {
    * 接口：GET /api/v1/ai/reports/:id
    * Path 参数：id: number
    */
-  const response = await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/ai/reports/${id}`);
+  const response = await fetch(`${getBackendUrl()}/api/v1/ai/reports/${id}`);
   const json = await response.json();
   if (!response.ok) throw new Error(json.error);
   return json;
@@ -273,7 +273,7 @@ export async function deleteReport(id: number): Promise<void> {
    * 接口：DELETE /api/v1/ai/reports/:id
    * Path 参数：id: number
    */
-  const response = await fetch(`${EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/ai/reports/${id}`, {
+  const response = await fetch(`${getBackendUrl()}/api/v1/ai/reports/${id}`, {
     method: 'DELETE',
   });
   const json = await response.json();

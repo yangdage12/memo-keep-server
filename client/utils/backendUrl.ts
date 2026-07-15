@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BACKEND_URL_KEY = '@backend_url';
-const DEFAULT_URL = 'https://silly-crews-appear.loca.lt';
+const DEFAULT_URL = 'https://forty-otters-shine.loca.lt';
 
 let cachedUrl: string | null = null;
 

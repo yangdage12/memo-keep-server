@@ -103,10 +103,10 @@ router.get('/:id', async (req, res) => {
 });
 
 // POST /api/v1/events - 创建事件
-// Body 参数：title: string, description?: string, category: string, priority: string, person?: string, remind_time?: string
+// Body 参数：title: string, description?: string, category: string, priority: string, person?: string, remind_time?: string, scheduledAt?: string
 router.post('/', async (req, res) => {
   try {
-    const { title, description, category, priority, person, remind_time } = req.body;
+    const { title, description, category, priority, person, remind_time, scheduledAt } = req.body;
 
     if (!title || typeof title !== 'string' || title.trim().length === 0) {
       res.status(400).json({ success: false, error: '标题不能为空' });
@@ -132,7 +132,7 @@ router.post('/', async (req, res) => {
       category,
       priority,
       person: person || null,
-      remind_time: remind_time || null,
+      remind_time: remind_time || scheduledAt || null,
     };
 
     const { data, error } = await client

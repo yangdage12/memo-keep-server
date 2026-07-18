@@ -1,0 +1,11 @@
+{
+  "buildCommand": "cd client && npx expo export --platform web",
+  "outputDirectory": "client/dist",
+  "devCommand": "cd client && npx expo start --web",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

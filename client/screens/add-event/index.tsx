@@ -15,6 +15,7 @@ import { Screen } from '@/components/Screen';
 import { createEvent } from '@/utils/api';
 import { scheduleEventReminder } from '@/utils/notifications';
 import { SmartDateInput } from '@/components/SmartDateInput';
+import { getBackendUrl } from '@/utils/backendUrl';
 import { format } from 'date-fns';
 
 const CATEGORIES = [
@@ -74,13 +75,26 @@ export default function AddEventScreen() {
       } catch (notifyErr) {
         console.error('Schedule notification error:', notifyErr);
       }
+      try {
+        await scheduleEventReminder(
+          event.id,
+          event.title,
+          event.description,
+          new Date(remindTime),
+          priority as 'high' | 'medium' | 'low'
+        );
+      } catch (notifyErr) {
+        console.error('Schedule notification error:', notifyErr);
+      }
 
       Alert.alert('成功', '事件已创建', [
         { text: '确定', onPress: () => router.back() },
       ]);
     } catch (error: any) {
       console.error('Save event error:', error);
-      Alert.alert('错误', error.message || '创建失败');
+      // 显示调试信息
+      const currentUrl = getBackendUrl();
+      Alert.alert('错误', `创建失败\n\n后端地址：${currentUrl}\n\n错误：${error.message || 'Network request failed'}`);
     } finally {
       setIsSaving(false);
     }

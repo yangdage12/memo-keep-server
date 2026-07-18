@@ -14,7 +14,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_BACKEND_BASE_URL": "https://memo-keep-server-production.up.railway.app"
+        "EXPO_PUBLIC_BACKEND_BASE_URL": "http://120.53.241.210:9091"
       }
     },
     "production": {
@@ -22,7 +22,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_BACKEND_BASE_URL": "https://memo-keep-server-production.up.railway.app"
+        "EXPO_PUBLIC_BACKEND_BASE_URL": "http://120.53.241.210:9091"
       }
     }
   },

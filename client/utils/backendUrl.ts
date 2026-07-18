@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BACKEND_URL_KEY = '@backend_url';
-const DEFAULT_URL = 'https://memo-keep-server-production.up.railway.app';
+const DEFAULT_URL = 'http://120.53.241.210:9091';
 
 let cachedUrl: string | null = null;
 

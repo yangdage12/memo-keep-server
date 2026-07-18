@@ -113,8 +113,8 @@ export const SmartDateInput = ({
 
   const handleConfirm = (date: Date) => {
     hideDatePicker();
-    // 采用带本地偏移的 ISO 字符串，避免 date 模式在非 UTC 时区出现跨天
-    const serverString = dayjs(date).format(format);
+    // 使用完整的 ISO 格式，包含时间和时区信息
+    const serverString = dayjs(date).toISOString();
     onChange(serverString);
   };
 

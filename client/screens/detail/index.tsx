@@ -29,22 +29,23 @@ const PRIORITY_MAP: Record<string, { label: string; color: string }> = {
 export default function DetailScreen() {
   const insets = useSafeAreaInsets();
   const router = useSafeRouter();
-  const { eventId } = useSafeSearchParams<{ eventId: number }>();
+  const params = useSafeSearchParams<{ eventId: number | string }>();
   const [event, setEvent] = useState<EventItem | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadEvent = useCallback(async () => {
-    if (!eventId) return;
+    if (!params.eventId) return;
     try {
       setLoading(true);
-      const data = await fetchEventById(eventId);
+      const id = typeof params.eventId === 'string' ? parseInt(params.eventId, 10) : params.eventId;
+      const data = await fetchEventById(id);
       setEvent(data);
     } catch (err) {
       console.error('Failed to load event:', err);
     } finally {
       setLoading(false);
     }
-  }, [eventId]);
+  }, [params.eventId]);
 
   useFocusEffect(
     useCallback(() => {

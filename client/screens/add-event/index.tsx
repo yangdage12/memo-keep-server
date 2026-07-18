@@ -14,7 +14,7 @@ import { FontAwesome6 } from '@expo/vector-icons';
 import { Screen } from '@/components/Screen';
 import { createEvent } from '@/utils/api';
 import { scheduleEventReminder } from '@/utils/notifications';
-import SmartDateInput from '@/components/SmartDateInput';
+import { SmartDateInput } from '@/components/SmartDateInput';
 import { format } from 'date-fns';
 
 const CATEGORIES = [

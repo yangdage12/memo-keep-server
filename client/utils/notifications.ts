@@ -185,12 +185,34 @@ export async function initNotifications(): Promise<string> {
   });
 
   if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('event-reminders', {
-      name: '事件提醒',
+    // 高优先级渠道 - 紧急事件
+    await Notifications.setNotificationChannelAsync('event-reminders-high', {
+      name: '紧急事件提醒',
       importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#6C63FF',
+      vibrationPattern: [0, 500, 500, 500, 500, 500],
+      lightColor: '#EF4444',
       sound: 'default',
+      enableLights: true,
+    });
+    
+    // 中优先级渠道 - 重要事件
+    await Notifications.setNotificationChannelAsync('event-reminders-medium', {
+      name: '重要事件提醒',
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#F59E0B',
+      sound: 'default',
+      enableLights: true,
+    });
+    
+    // 低优先级渠道 - 普通事件
+    await Notifications.setNotificationChannelAsync('event-reminders-low', {
+      name: '普通事件提醒',
+      importance: Notifications.AndroidImportance.DEFAULT,
+      vibrationPattern: [0, 150],
+      lightColor: '#6B7280',
+      sound: 'default',
+      enableLights: true,
     });
   }
 
@@ -212,7 +234,8 @@ export async function scheduleEventReminder(
   eventId: number,
   title: string,
   description: string | null,
-  remindTime: Date
+  remindTime: Date,
+  priority: 'high' | 'medium' | 'low' = 'medium'
 ): Promise<string | null> {
   const now = new Date();
   const timeDiff = remindTime.getTime() - now.getTime();
@@ -277,7 +300,33 @@ export async function scheduleEventReminder(
 
   // 原生平台使用 expo-notifications
   console.log('[Notifications] Native platform: scheduling with expo-notifications');
-  const channelId = Platform.OS === 'android' ? 'event-reminders' : undefined;
+  
+  // 根据优先级选择通知渠道和声音
+  let channelId = 'event-reminders-default';
+  let sound = 'default';
+  
+  if (Platform.OS === 'android') {
+    if (priority === 'high') {
+      channelId = 'event-reminders-high';
+      sound = 'default'; // Android 高优先级使用默认声音（最强烈）
+    } else if (priority === 'medium') {
+      channelId = 'event-reminders-medium';
+      sound = 'default';
+    } else {
+      channelId = 'event-reminders-low';
+      sound = 'default';
+    }
+  } else {
+    // iOS 可以直接设置声音
+    if (priority === 'high') {
+      sound = 'default'; // 默认声音
+    } else if (priority === 'medium') {
+      sound = 'default';
+    } else {
+      sound = 'default';
+    }
+  }
+  
   const timestamp = remindTime.getTime();
 
   try {
@@ -285,9 +334,9 @@ export async function scheduleEventReminder(
       content: {
         title: `事件提醒：${title}`,
         body: description || '您有一个重要事件即将开始',
-        data: { eventId },
-        sound: 'default',
-        ...(channelId ? { channelId } : {}),
+        data: { eventId, priority },
+        sound,
+        ...(Platform.OS === 'android' ? { channelId } : {}),
       },
       trigger: {
         timestamp,

@@ -68,7 +68,8 @@ export default function AddEventScreen() {
           event.id,
           event.title,
           event.description,
-          new Date(remindTime)
+          new Date(remindTime),
+          priority as 'high' | 'medium' | 'low'
         );
       } catch (notifyErr) {
         console.error('Schedule notification error:', notifyErr);

@@ -5,9 +5,9 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
-  Platform,
   StyleSheet,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeRouter } from '@/hooks/useSafeRouter';
 import { FontAwesome6 } from '@expo/vector-icons';
@@ -97,35 +97,115 @@ export default function AddEventScreen() {
           <View style={styles.backButton} />
         </View>
 
-        {/* Content */}
-        <View style={styles.content}>
-          <Text style={styles.label}>输入事件内容</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="描述你的事件..."
-            placeholderTextColor="#9ca3af"
-            multiline
-            numberOfLines={4}
-            value={text}
-            onChangeText={setText}
-            editable={!isProcessing}
-          />
-        </View>
+        {/* Form */}
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Title Input */}
+          <View style={styles.field}>
+            <Text style={styles.label}>事件标题 *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="输入事件标题..."
+              placeholderTextColor="#9ca3af"
+              value={title}
+              onChangeText={setTitle}
+            />
+          </View>
+
+          {/* Description Input */}
+          <View style={styles.field}>
+            <Text style={styles.label}>事件描述</Text>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="描述你的事件..."
+              placeholderTextColor="#9ca3af"
+              multiline
+              numberOfLines={4}
+              value={description}
+              onChangeText={setDescription}
+            />
+          </View>
+
+          {/* Category Selection */}
+          <View style={styles.field}>
+            <Text style={styles.label}>分类</Text>
+            <View style={styles.optionsRow}>
+              {CATEGORIES.map((cat) => (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[
+                    styles.optionButton,
+                    category === cat.id && { backgroundColor: cat.color },
+                  ]}
+                  onPress={() => setCategory(cat.id)}
+                >
+                  <FontAwesome6
+                    name={cat.icon as any}
+                    size={16}
+                    color={category === cat.id ? '#fff' : '#6b7280'}
+                  />
+                  <Text
+                    style={[
+                      styles.optionText,
+                      category === cat.id && { color: '#fff' },
+                    ]}
+                  >
+                    {cat.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Priority Selection */}
+          <View style={styles.field}>
+            <Text style={styles.label}>优先级</Text>
+            <View style={styles.optionsRow}>
+              {PRIORITIES.map((p) => (
+                <TouchableOpacity
+                  key={p.id}
+                  style={[
+                    styles.optionButton,
+                    priority === p.id && { backgroundColor: p.color },
+                  ]}
+                  onPress={() => setPriority(p.id)}
+                >
+                  <Text
+                    style={[
+                      styles.optionText,
+                      priority === p.id && { color: '#fff' },
+                    ]}
+                  >
+                    {p.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Date Selection */}
+          <View style={styles.field}>
+            <SmartDateInput
+              label="提醒时间 *"
+              mode="datetime"
+              value={selectedDate ? selectedDate.toISOString() : null}
+              onChange={(isoDate) => setSelectedDate(new Date(isoDate))}
+              placeholder="选择提醒时间"
+            />
+          </View>
+        </ScrollView>
 
         {/* Submit Button */}
-        {text.trim() && (
-          <TouchableOpacity
-            style={styles.submitButton}
-            onPress={handleTextSubmit}
-            disabled={isProcessing}
-          >
-            {isProcessing ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.submitButtonText}>创建事件</Text>
-            )}
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          style={[styles.submitButton, isSaving && styles.submitButtonDisabled]}
+          onPress={handleSave}
+          disabled={isSaving}
+        >
+          {isSaving ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.submitButtonText}>创建事件</Text>
+          )}
+        </TouchableOpacity>
       </View>
     </Screen>
   );
@@ -162,68 +242,46 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
+  field: {
+    marginBottom: 20,
+  },
   label: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#374151',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   input: {
     backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 12,
+    padding: 14,
     fontSize: 16,
     color: '#111827',
-    minHeight: 120,
-    textAlignVertical: 'top',
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },
-  divider: {
+  textArea: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  optionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  optionButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 24,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#e5e7eb',
-  },
-  dividerText: {
-    paddingHorizontal: 16,
-    fontSize: 14,
-    color: '#9ca3af',
-  },
-  voiceSection: {
-    alignItems: 'center',
-    paddingVertical: 20,
-  },
-  voiceHint: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 20,
-  },
-  voiceButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#6366f1',
     justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#6366f1',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#f3f4f6',
   },
-  voiceButtonRecording: {
-    backgroundColor: '#ef4444',
-    shadowColor: '#ef4444',
-  },
-  recordingHint: {
-    fontSize: 13,
-    color: '#ef4444',
-    marginTop: 12,
+  optionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6b7280',
   },
   submitButton: {
     marginHorizontal: 20,
@@ -237,6 +295,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
+  },
+  submitButtonDisabled: {
+    opacity: 0.7,
   },
   submitButtonText: {
     fontSize: 16,

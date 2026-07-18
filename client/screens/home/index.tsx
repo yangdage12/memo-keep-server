@@ -109,8 +109,48 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       loadEvents();
+      
+      // 启动提醒检查定时器
+      const reminderInterval = setInterval(() => {
+        checkReminders();
+      }, 60000); // 每分钟检查一次
+      
+      return () => {
+        clearInterval(reminderInterval);
+      };
     }, [loadEvents])
   );
+
+  // 检查提醒
+  const checkReminders = useCallback(async () => {
+    try {
+      const events = await fetchEvents();
+      const now = new Date();
+      
+      events.forEach(event => {
+        if (event.remind_time && !event.is_reminded && !event.is_completed) {
+          const remindTime = new Date(event.remind_time);
+          // 如果提醒时间已到（误差 1 分钟内）
+          const diff = remindTime.getTime() - now.getTime();
+          if (diff <= 60000 && diff >= -60000) {
+            // 触发提醒
+            console.log('[Home] Reminder triggered:', event.title);
+            setReminderModal({
+              visible: true,
+              title: `事件提醒：${event.title}`,
+              description: event.description || '您有一个重要事件即将开始',
+              eventId: event.id,
+            });
+            
+            // 标记为已提醒
+            toggleEventComplete(event.id, event.is_completed).catch(() => {});
+          }
+        }
+      });
+    } catch (error) {
+      console.error('[Home] Check reminders error:', error);
+    }
+  }, []);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

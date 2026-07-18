@@ -14,7 +14,11 @@ patchedDependencies:
 
 importers:
 
-  .: {}
+  .:
+    dependencies:
+      coze-coding-dev-sdk:
+        specifier: ^0.7.24
+        version: 0.7.24(openai@6.16.0(ws@8.19.0)(zod@4.3.6))(ws@8.19.0)
 
   client:
     dependencies:

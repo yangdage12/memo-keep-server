@@ -5,164 +5,83 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
-  ActivityIndicator,
   Platform,
   StyleSheet,
+  ScrollView,
 } from 'react-native';
 import { useSafeRouter } from '@/hooks/useSafeRouter';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { Screen } from '@/components/Screen';
-import { createFormDataFile } from '@/utils';
-import { Audio } from 'expo-av';
+import { createEvent } from '@/utils/api';
 import { scheduleEventReminder } from '@/utils/notifications';
+import SmartDateInput from '@/components/SmartDateInput';
+import { format } from 'date-fns';
+
+const CATEGORIES = [
+  { id: 'work', label: '工作', icon: 'briefcase', color: '#6366F1' },
+  { id: 'life', label: '生活', icon: 'heart', color: '#10B981' },
+  { id: 'family', label: '家庭', icon: 'home', color: '#F59E0B' },
+];
+
+const PRIORITIES = [
+  { id: 'high', label: '紧急', color: '#EF4444' },
+  { id: 'medium', label: '重要', color: '#F59E0B' },
+  { id: 'low', label: '普通', color: '#6B7280' },
+];
 
 export default function AddEventScreen() {
   const router = useSafeRouter();
-  const [text, setText] = useState('');
-  const [isRecording, setIsRecording] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('life');
+  const [priority, setPriority] = useState('medium');
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const startRecording = async () => {
-    try {
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('错误', '需要麦克风权限才能录音');
-        return;
-      }
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-      setRecording(recording);
-      setIsRecording(true);
-    } catch (error) {
-      console.error('Start recording error:', error);
-      Alert.alert('错误', '录音启动失败');
-    }
-  };
-
-  const stopRecording = async () => {
-    if (!recording) return;
-
-    try {
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
-      setIsRecording(false);
-      setRecording(null);
-
-      if (uri) {
-        await processAudio(uri);
-      }
-    } catch (error) {
-      console.error('Stop recording error:', error);
-      Alert.alert('错误', '录音处理失败');
-    }
-  };
-
-  const processAudio = async (audioUri: string) => {
-    setIsProcessing(true);
-    try {
-      const file = await createFormDataFile(audioUri, 'audio.m4a', 'audio/m4a');
-      const formData = new FormData();
-      formData.append('audio', file as any);
-
-      const response = await fetch(
-        `${process.env.EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/ai/smart-create`,
-        {
-          method: 'POST',
-          body: formData as any,
-        }
-      );
-
-      const json = await response.json();
-      if (!response.ok) throw new Error(json.error);
-
-      // 调度通知
-      if (json.event.remind_time) {
-        console.log('[AddEvent] Event created with remind_time:', json.event.remind_time);
-        console.log('[AddEvent] Parsing date:', new Date(json.event.remind_time));
-        
-        try {
-          const remindDate = new Date(json.event.remind_time);
-          
-          if (isNaN(remindDate.getTime())) {
-            console.error('[AddEvent] Invalid remind_time date:', json.event.remind_time);
-          } else {
-            console.log('[AddEvent] Scheduling notification for:', remindDate.toISOString());
-            const notificationId = await scheduleEventReminder(
-              json.event.id,
-              json.event.title,
-              json.event.description,
-              remindDate
-            );
-            console.log('[AddEvent] Notification scheduled, id:', notificationId);
-          }
-        } catch (notifyErr) {
-          console.error('[AddEvent] Schedule notification error:', notifyErr);
-        }
-      } else {
-        console.log('[AddEvent] No remind_time in event, skipping notification');
-      }
-
-      Alert.alert('成功', `已创建事件：${json.event.title}`, [
-        { text: '确定', onPress: () => router.back() },
-      ]);
-    } catch (error: any) {
-      console.error('Process audio error:', error);
-      Alert.alert('错误', error.message || '语音识别失败');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleTextSubmit = async () => {
-    if (!text.trim()) {
-      Alert.alert('提示', '请输入事件内容');
+  const handleSave = async () => {
+    if (!title.trim()) {
+      Alert.alert('提示', '请输入事件标题');
       return;
     }
 
-    setIsProcessing(true);
-    try {
-      const response = await fetch(
-        `${process.env.EXPO_PUBLIC_BACKEND_BASE_URL}/api/v1/ai/smart-create`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: text.trim() }),
-        }
-      );
+    if (!selectedDate) {
+      Alert.alert('提示', '请选择提醒时间');
+      return;
+    }
 
-      const json = await response.json();
-      if (!response.ok) throw new Error(json.error);
+    setIsSaving(true);
+    try {
+      // 使用完整的 ISO 格式，包含时间和时区
+      const remindTime = format(selectedDate, "yyyy-MM-dd'T'HH:mm:ss.SSSxxx");
+
+      const event = await createEvent({
+        title: title.trim(),
+        description: description.trim() || undefined,
+        category,
+        priority,
+        remind_time: remindTime,
+      });
 
       // 调度通知
-      if (json.event.remind_time) {
-        try {
-          await scheduleEventReminder(
-            json.event.id,
-            json.event.title,
-            json.event.description,
-            new Date(json.event.remind_time)
-          );
-        } catch (notifyErr) {
-          console.error('Schedule notification error:', notifyErr);
-        }
+      try {
+        await scheduleEventReminder(
+          event.id,
+          event.title,
+          event.description,
+          new Date(remindTime)
+        );
+      } catch (notifyErr) {
+        console.error('Schedule notification error:', notifyErr);
       }
 
-      Alert.alert('成功', `已创建事件：${json.event.title}`, [
+      Alert.alert('成功', '事件已创建', [
         { text: '确定', onPress: () => router.back() },
       ]);
     } catch (error: any) {
-      console.error('Text submit error:', error);
+      console.error('Save event error:', error);
       Alert.alert('错误', error.message || '创建失败');
     } finally {
-      setIsProcessing(false);
+      setIsSaving(false);
     }
   };
 
@@ -183,7 +102,7 @@ export default function AddEventScreen() {
           <Text style={styles.label}>输入事件内容</Text>
           <TextInput
             style={styles.input}
-            placeholder="描述你的事件，AI 会自动分类..."
+            placeholder="描述你的事件..."
             placeholderTextColor="#9ca3af"
             multiline
             numberOfLines={4}
@@ -191,42 +110,6 @@ export default function AddEventScreen() {
             onChangeText={setText}
             editable={!isProcessing}
           />
-
-          <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>或</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* Voice Input */}
-          <View style={styles.voiceSection}>
-            <Text style={styles.voiceHint}>
-              {isRecording ? '正在录音...' : '点击下方按钮开始语音输入'}
-            </Text>
-
-            <TouchableOpacity
-              style={[
-                styles.voiceButton,
-                isRecording && styles.voiceButtonRecording,
-              ]}
-              onPress={isRecording ? stopRecording : startRecording}
-              disabled={isProcessing}
-            >
-              {isProcessing ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <FontAwesome6
-                  name={isRecording ? 'stop' : 'microphone'}
-                  size={32}
-                  color="#fff"
-                />
-              )}
-            </TouchableOpacity>
-
-            {isRecording && (
-              <Text style={styles.recordingHint}>再次点击停止录音</Text>
-            )}
-          </View>
         </View>
 
         {/* Submit Button */}
@@ -239,7 +122,7 @@ export default function AddEventScreen() {
             {isProcessing ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.submitButtonText}>智能创建</Text>
+              <Text style={styles.submitButtonText}>创建事件</Text>
             )}
           </TouchableOpacity>
         )}

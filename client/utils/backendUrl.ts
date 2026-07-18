@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BACKEND_URL_KEY = '@backend_url';
-const DEFAULT_URL = 'https://forty-otters-shine.loca.lt';
+const DEFAULT_URL = 'https://memo-keep-server-production.up.railway.app';
 
 let cachedUrl: string | null = null;
 

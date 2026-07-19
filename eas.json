@@ -21,7 +21,6 @@
       "android": {
         "buildType": "apk"
       },
-      "installCommand": "pnpm install --no-frozen-lockfile",
       "env": {
         "EXPO_PUBLIC_BACKEND_BASE_URL": "http://120.53.241.210:9091"
       }

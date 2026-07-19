@@ -1,4 +1,5 @@
 import { getBackendUrl } from './backendUrl';
+import axios from 'axios';
 
 export interface EventItem {
   id: number;
@@ -41,10 +42,9 @@ export async function fetchEvents(params?: {
    * 接口：GET /api/v1/events
    * Query 参数：category?: string, priority?: string, is_completed?: boolean
    */
-  const response = await fetch(url);
-  const json = await response.json();
-  if (!json.success) throw new Error(json.error);
-  return json.data;
+  const response = await axios.get(url);
+  if (!response.data.success) throw new Error(response.data.error);
+  return response.data.data;
 }
 
 export async function fetchEventById(id: number): Promise<EventItem> {
@@ -53,10 +53,9 @@ export async function fetchEventById(id: number): Promise<EventItem> {
    * 接口：GET /api/v1/events/:id
    * Path 参数：id: number
    */
-  const response = await fetch(`${getBackendUrl()}/api/v1/events/${id}`);
-  const json = await response.json();
-  if (!json.success) throw new Error(json.error);
-  return json.data;
+  const response = await axios.get(`${getBackendUrl()}/api/v1/events/${id}`);
+  if (!response.data.success) throw new Error(response.data.error);
+  return response.data.data;
 }
 
 export async function fetchEventStats(): Promise<EventStats> {
@@ -64,10 +63,9 @@ export async function fetchEventStats(): Promise<EventStats> {
    * 服务端文件：server/src/routes/events.ts
    * 接口：GET /api/v1/events/stats
    */
-  const response = await fetch(`${getBackendUrl()}/api/v1/events/stats`);
-  const json = await response.json();
-  if (!json.success) throw new Error(json.error);
-  return json.data;
+  const response = await axios.get(`${getBackendUrl()}/api/v1/events/stats`);
+  if (!response.data.success) throw new Error(response.data.error);
+  return response.data.data;
 }
 
 export async function createEvent(data: {
@@ -83,14 +81,9 @@ export async function createEvent(data: {
    * 接口：POST /api/v1/events
    * Body 参数：title: string, description?: string, category: string, priority: string, person?: string, remind_time?: string
    */
-  const response = await fetch(`${getBackendUrl()}/api/v1/events`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  const json = await response.json();
-  if (!json.success) throw new Error(json.error);
-  return json.data;
+  const response = await axios.post(`${getBackendUrl()}/api/v1/events`, data);
+  if (!response.data.success) throw new Error(response.data.error);
+  return response.data.data;
 }
 
 export async function updateEvent(id: number, data: {
@@ -108,14 +101,9 @@ export async function updateEvent(id: number, data: {
    * Path 参数：id: number
    * Body 参数：title?: string, description?: string, category?: string, priority?: string, person?: string, remind_time?: string, is_completed?: boolean
    */
-  const response = await fetch(`${getBackendUrl()}/api/v1/events/${id}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  const json = await response.json();
-  if (!json.success) throw new Error(json.error);
-  return json.data;
+  const response = await axios.put(`${getBackendUrl()}/api/v1/events/${id}`, data);
+  if (!response.data.success) throw new Error(response.data.error);
+  return response.data.data;
 }
 
 export async function deleteEvent(id: number): Promise<void> {
@@ -124,11 +112,8 @@ export async function deleteEvent(id: number): Promise<void> {
    * 接口：DELETE /api/v1/events/:id
    * Path 参数：id: number
    */
-  const response = await fetch(`${getBackendUrl()}/api/v1/events/${id}`, {
-    method: 'DELETE',
-  });
-  const json = await response.json();
-  if (!json.success) throw new Error(json.error);
+  const response = await axios.delete(`${getBackendUrl()}/api/v1/events/${id}`);
+  if (!response.data.success) throw new Error(response.data.error);
 }
 
 export async function toggleEventComplete(id: number, isCompleted: boolean): Promise<void> {
@@ -138,13 +123,8 @@ export async function toggleEventComplete(id: number, isCompleted: boolean): Pro
    * Path 参数：id: number
    * Body 参数：is_completed: boolean
    */
-  const response = await fetch(`${getBackendUrl()}/api/v1/events/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ is_completed: isCompleted }),
-  });
-  const json = await response.json();
-  if (!json.success) throw new Error(json.error);
+  const response = await axios.patch(`${getBackendUrl()}/api/v1/events/${id}`, { is_completed: isCompleted });
+  if (!response.data.success) throw new Error(response.data.error);
 }
 
 // ============ AI API ============
@@ -180,13 +160,9 @@ export async function transcribeAudio(audioUri: string): Promise<{ text: string;
   const fileBlob = await fileResponse.blob();
   formData.append('audio', fileBlob as any, 'recording.m4a');
 
-  const response = await fetch(`${getBackendUrl()}/api/v1/ai/transcribe`, {
-    method: 'POST',
-    body: formData,
-  });
-  const json = await response.json();
-  if (!response.ok) throw new Error(json.error);
-  return json;
+  const response = await axios.post(`${getBackendUrl()}/api/v1/ai/transcribe`, formData);
+  if (!response.data.success) throw new Error(response.data.error);
+  return response.data;
 }
 
 export async function classifyEvent(text: string): Promise<AIEventResult> {
@@ -195,14 +171,9 @@ export async function classifyEvent(text: string): Promise<AIEventResult> {
    * 接口：POST /api/v1/ai/classify
    * Body 参数：text: string
    */
-  const response = await fetch(`${getBackendUrl()}/api/v1/ai/classify`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text }),
-  });
-  const json = await response.json();
-  if (!response.ok) throw new Error(json.error);
-  return json;
+  const response = await axios.post(`${getBackendUrl()}/api/v1/ai/classify`, { text });
+  if (!response.data.success) throw new Error(response.data.error);
+  return response.data;
 }
 
 export async function smartCreateEvent(text?: string, audioUri?: string): Promise<{ event: EventItem; transcribedText: string }> {
@@ -219,13 +190,9 @@ export async function smartCreateEvent(text?: string, audioUri?: string): Promis
     formData.append('audio', fileBlob as any, 'recording.m4a');
   }
 
-  const response = await fetch(`${getBackendUrl()}/api/v1/ai/smart-create`, {
-    method: 'POST',
-    body: formData,
-  });
-  const json = await response.json();
-  if (!response.ok) throw new Error(json.error);
-  return json;
+  const response = await axios.post(`${getBackendUrl()}/api/v1/ai/smart-create`, formData);
+  if (!response.data.success) throw new Error(response.data.error);
+  return response.data;
 }
 
 export async function generateReport(type: string, period: string): Promise<{ report: ReportItem; stats: any }> {
@@ -234,14 +201,9 @@ export async function generateReport(type: string, period: string): Promise<{ re
    * 接口：POST /api/v1/ai/generate-report
    * Body 参数：type: string, period: string
    */
-  const response = await fetch(`${getBackendUrl()}/api/v1/ai/generate-report`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ type, period }),
-  });
-  const json = await response.json();
-  if (!response.ok) throw new Error(json.error);
-  return json;
+  const response = await axios.post(`${getBackendUrl()}/api/v1/ai/generate-report`, { type, period });
+  if (!response.data.success) throw new Error(response.data.error);
+  return response.data;
 }
 
 export async function fetchReports(): Promise<ReportItem[]> {
@@ -249,10 +211,9 @@ export async function fetchReports(): Promise<ReportItem[]> {
    * 服务端文件：server/src/routes/ai.ts
    * 接口：GET /api/v1/ai/reports
    */
-  const response = await fetch(`${getBackendUrl()}/api/v1/ai/reports`);
-  const json = await response.json();
-  if (!response.ok) throw new Error(json.error);
-  return json;
+  const response = await axios.get(`${getBackendUrl()}/api/v1/ai/reports`);
+  if (!response.data.success) throw new Error(response.data.error);
+  return response.data.data;
 }
 
 export async function fetchReportById(id: number): Promise<ReportItem> {
@@ -261,10 +222,9 @@ export async function fetchReportById(id: number): Promise<ReportItem> {
    * 接口：GET /api/v1/ai/reports/:id
    * Path 参数：id: number
    */
-  const response = await fetch(`${getBackendUrl()}/api/v1/ai/reports/${id}`);
-  const json = await response.json();
-  if (!response.ok) throw new Error(json.error);
-  return json;
+  const response = await axios.get(`${getBackendUrl()}/api/v1/ai/reports/${id}`);
+  if (!response.data.success) throw new Error(response.data.error);
+  return response.data.data;
 }
 
 export async function deleteReport(id: number): Promise<void> {
@@ -273,9 +233,6 @@ export async function deleteReport(id: number): Promise<void> {
    * 接口：DELETE /api/v1/ai/reports/:id
    * Path 参数：id: number
    */
-  const response = await fetch(`${getBackendUrl()}/api/v1/ai/reports/${id}`, {
-    method: 'DELETE',
-  });
-  const json = await response.json();
-  if (!response.ok) throw new Error(json.error);
+  const response = await axios.delete(`${getBackendUrl()}/api/v1/ai/reports/${id}`);
+  if (!response.data.success) throw new Error(response.data.error);
 }

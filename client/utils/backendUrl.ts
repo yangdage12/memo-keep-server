@@ -19,7 +19,7 @@ export async function initBackendUrl(): Promise<string> {
 
 // 同步获取（用于 API 调用）
 export function getBackendUrl(): string {
-  return cachedUrl || DEFAULT_URL;
+  return DEFAULT_URL;
 }
 
 // 保存 URL

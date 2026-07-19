@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "4d01cf19-9517-4dd1-8d51-8d6733802ecf"
+      }
+    },
+    "android": {
+      "package": "com.memokeep.app"
+    }
+  }
+}

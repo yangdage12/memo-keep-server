@@ -1,33 +1,17 @@
 {
-  "cli": {
-    "version": ">= 21.0.0",
-    "appVersionSource": "remote"
-  },
   "build": {
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_BACKEND_BASE_URL": "http://120.53.241.210:9091"
+      },
+      "node": "20.11.1"
+    },
     "development": {
       "developmentClient": true,
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal",
-      "android": {
-        "buildType": "apk"
-      },
-      "env": {
-        "EXPO_PUBLIC_BACKEND_BASE_URL": "http://120.53.241.210:9091"
-      }
-    },
-    "production": {
-      "android": {
-        "buildType": "apk"
-      },
-      "installCommand": "pnpm install --no-frozen-lockfile",
-      "env": {
-        "EXPO_PUBLIC_BACKEND_BASE_URL": "http://120.53.241.210:9091"
-      }
+      "distribution": "internal"
     }
-  },
-  "submit": {
-    "production": {}
   }
 }
